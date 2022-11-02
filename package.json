@@ -1,0 +1,28 @@
+{
+  "name": "@mattduffy/unpacker",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "exports": {
+    "import": "./index.js",
+    "package.json": "./package.json",
+    "test": "./test/*-test.js",
+    "jest": "./__tests__/*.js"
+  },
+  "scripts": {
+    "test": "DEBUG=unpacker:* node --test test/",
+    "jest": "DEBUG=unpacker:* node --experimental-vm-modules node_modules/jest/bin/jest.js"
+  },
+  "author": "Matthew Duffy",
+  "license": "ISC",
+  "devDependencies": {
+    "eslint": "8.26.0",
+    "eslint-config-airbnb-base": "15.0.0",
+    "eslint-plugin-import": "2.26.0",
+    "jest": "29.2.2"
+  },
+  "dependencies": {
+    "debug": "4.3.4"
+  }
+}
