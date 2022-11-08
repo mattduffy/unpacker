@@ -8,6 +8,7 @@ const debug = Debug('unpacker:test')
 
 describe('Testining the creation and use of the Unpacker class.', () => {
   it('should create an instance of Unpacker', () => {
+    debug('Unpacker constructor test')
     const unpacker = new Unpacker()
     assert.strictEqual(unpacker instanceof Unpacker, true, `unpacker type error`)
     assert.strictEqual(unpacker instanceof EventEmitter, true, `unpacker type error`)
