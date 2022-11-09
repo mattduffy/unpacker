@@ -14,7 +14,7 @@ module.exports = {
     semi: ['error', 'never'],
     'no-console': 'off',
     'no-underscore-dangle': 'off',
-    'import/prefer-default-export: 'off',
+    'import/prefer-default-export': 'off',
     'max-len': 'off',
   },
 }

@@ -3,7 +3,7 @@
  * @author Matthew Duffy <mattduffy@gmail.com>
  * @file index.js The Unpacker class definition file.
  */
-import path from 'node:path'
+import nodePath from 'node:path'
 import { fileURLToPath } from 'node:url'
 import fs from 'node:fs/promises'
 import { promisify } from 'node:util'
@@ -30,9 +30,9 @@ export class Unpacker extends EventEmitter {
    */
   constructor(pathToArchiveFile) {
     super()
-    this.path = pathToArchiveFile || null
+    this._path = pathToArchiveFile || null
   }
-  
+
   /**
    * Return the string value of the file system path to the archive.
    * @summary Return the string value of the file system path to the archive.
@@ -40,27 +40,33 @@ export class Unpacker extends EventEmitter {
    * @return { string } The file system path to the archive.
    */
   get path() {
-    return this.path
+    return this._path
   }
 
   /**
    * Set the value of path to the file system location of the archive.
    * @summary Set the value of the path to the file system location of the archive.
    * @author Matthew Duffy <mattduffy@gmail.com>
-   * @async
-   * @param { string } path - String value of a file system path to the archive.
+   * @param { string } filePath - String value of a file system path to the archive.
    * @return { undefind|Error } Throws an error if path argument is not provided or if path is not valid.
    */
-  set path(path) {
-    if (!path) {
+  set path(filePath) {
+    if (!filePath) {
       throw new Error('Missing required path argument.')
     }
-    try {
-      let stat = await fs.stat(path)
-      this.path = path
-    } catch (e) {
-      throw new Error(`Not a valid file path: ${path}`)
-    }
+    (async () => {
+      debug(`path argument: ${filePath}`)
+      try {
+        const stat = await fs.stat(filePath)
+        this._path = filePath
+        debug(`async: ${this._path}`)
+        debug(stat)
+      } catch (e) {
+        throw new Error(`Not a valid file path: ${filePath}`)
+      }
+    })()
+    this._path = filePath
+    debug(`after async: ${this._path}`)
     return
   }
   /**
