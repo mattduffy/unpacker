@@ -50,4 +50,10 @@ describe('setting the path', () => {
       assert.strictEqual(e instanceof Error, true)
     }
   })
+
+  it('should set the correct mimetype for the archive file', async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(tarball)
+    assert.strictEqual(unpacker.getMimetype(), 'application/gzip')
+  })
 })

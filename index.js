@@ -31,6 +31,7 @@ export class Unpacker extends EventEmitter {
   constructor(pathToArchiveFile) {
     super()
     this._path = pathToArchiveFile || null
+    this._mimetype = null
   }
 
   /**
@@ -56,14 +57,31 @@ export class Unpacker extends EventEmitter {
     }
     try {
       const stat = await fs.stat(filePath)
-      this._path = filePath
-      // debug(`async: ${this._path}`)
-      // debug(stat)
-      return
+      if (!stat.isFile()) {
+        throw new Error(`Not a file: ${filePath}`)
+      } else {
+        this._path = nodePath.resolve(filePath)
+        const result = await cmd(`file --mime-type --brief ${filePath}`)
+        this._mimetype = result.stdout.trim()
+        // debug(`async: ${this._path}`)
+        // debug(stat)
+        return
+      }
     } catch (e) {
       throw new Error(`Not a valid file path: ${filePath}`)
     }
   }
+
+  /**
+   * Return the string value of mime type of the archive.
+   * @summary Return the string value of the mime type of the archive.
+   * @author Matthew Duffy <mattduffy@gmail.com>
+   * @return { string } The archive file mime type.
+   */
+  getMimetype() {
+    return this._mimetype
+  }
+
   /**
    * Unpack the archive file.  The archive file may be one of these file formats: .tar, .tar.gz, .tgz, .zip, or .gzip.  The contents of the archive are extracted into a folder, named after the archive, in its current directory.
    * @summary Extract the contents of the archive into a directory, with the name of the archive.

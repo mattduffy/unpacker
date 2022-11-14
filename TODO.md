@@ -5,4 +5,4 @@
 - [x] - create a unit test for instance creation
 - [x] getter/setter methods for instance property: path
 - [x] - create unit test for setting / getting instance property path
-- [ ] 
+- [x] - create a unit test to check the archive mimetype
