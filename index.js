@@ -12,7 +12,7 @@ import { EventEmitter } from 'node:events'
 import Debug from 'debug'
 
 const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const __dirname = nodePath.dirname(__filename)
 const cmd = promisify(exec)
 const debug = Debug('unpacker:class')
 
@@ -39,7 +39,7 @@ export class Unpacker extends EventEmitter {
    * @author Matthew Duffy <mattduffy@gmail.com>
    * @return { string } The file system path to the archive.
    */
-  get path() {
+  getPath() {
     return this._path
   }
 
@@ -50,24 +50,19 @@ export class Unpacker extends EventEmitter {
    * @param { string } filePath - String value of a file system path to the archive.
    * @return { undefind|Error } Throws an error if path argument is not provided or if path is not valid.
    */
-  set path(filePath) {
+  async setPath(filePath) {
     if (!filePath) {
       throw new Error('Missing required path argument.')
     }
-    (async () => {
-      debug(`path argument: ${filePath}`)
-      try {
-        const stat = await fs.stat(filePath)
-        this._path = filePath
-        debug(`async: ${this._path}`)
-        debug(stat)
-      } catch (e) {
-        throw new Error(`Not a valid file path: ${filePath}`)
-      }
-    })()
-    this._path = filePath
-    debug(`after async: ${this._path}`)
-    return
+    try {
+      const stat = await fs.stat(filePath)
+      this._path = filePath
+      // debug(`async: ${this._path}`)
+      // debug(stat)
+      return
+    } catch (e) {
+      throw new Error(`Not a valid file path: ${filePath}`)
+    }
   }
   /**
    * Unpack the archive file.  The archive file may be one of these file formats: .tar, .tar.gz, .tgz, .zip, or .gzip.  The contents of the archive are extracted into a folder, named after the archive, in its current directory.

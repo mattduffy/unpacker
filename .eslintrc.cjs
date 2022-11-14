@@ -12,6 +12,7 @@ module.exports = {
   },
   rules: {
     semi: ['error', 'never'],
+    'import/extensions': 'off',
     'no-console': 'off',
     'no-underscore-dangle': 'off',
     'import/prefer-default-export': 'off',
