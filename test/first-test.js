@@ -9,12 +9,12 @@ import { Unpacker } from '../index.js'
 const debug = Debug('unpacker:test')
 const __dirname = path.resolve(path.dirname('.'))
 const tinyZip = `${__dirname}/test/tiny.zip`
+const tar = `${__dirname}/test/marquetry.tar`
 const tarball = `${__dirname}/test/marquetry.tgz`
 const badPath = `${__dirname}/test/missingfile.tar.gz`
 
 before('before tests, setup', () => {
   debug('before tests, setup')
-  // throw new Error('before test setup')
 })
 
 after('after tests, teardown', () => {
@@ -51,9 +51,31 @@ describe('setting the path', () => {
     }
   })
 
-  it('should set the correct mimetype for the archive file', async () => {
+  it('should fail if path to the file is invalid', async () => {
+    const unpacker = new Unpacker()
+    try {
+      await unpacker.setPath(badPath)
+    } catch (e) {
+      debug(e)
+      assert.strictEqual(e instanceof Error, true)
+    }
+  })
+
+  it('should correctly identify the mime type of a tar archive', async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(tar)
+    assert.strictEqual(unpacker.getMimetype(), 'application/x-tar')
+  })
+
+  it('should correctly identify the mimetype of a gzip compressed archive', async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tarball)
     assert.strictEqual(unpacker.getMimetype(), 'application/gzip')
+  })
+
+  it('should correctly identify the mimetype of a zip compressed archive', async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(tinyZip)
+    assert.strictEqual(unpacker.getMimetype(), 'application/zip')
   })
 })
