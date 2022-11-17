@@ -64,6 +64,7 @@ describe('setting the path', () => {
   it('should correctly identify the mime type of a tar archive', async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tar)
+    debug(`${tar}: ${unpacker.getMimetype()}`)
     assert.strictEqual(unpacker.getMimetype(), 'application/x-tar')
   })
 
