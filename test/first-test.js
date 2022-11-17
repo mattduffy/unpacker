@@ -80,3 +80,19 @@ describe('setting the path', () => {
     assert.strictEqual(unpacker.getMimetype(), 'application/zip')
   })
 })
+
+describe('checking for tar and gzip', () => {
+  it('should find a usable version of tar', async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(tarball)
+    const hasTar = unpacker.checkCommands()
+    assert.strictEqual(/tar/.test(hasTar.tar.path), true)
+  })
+
+  it('should find a usable verion of gzip', async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(tarball)
+    const hasGzip = unpacker.checkCommands()
+    assert.strictEqual(/gzip/.test(hasGzip.gzip.path), true)
+  })
+})

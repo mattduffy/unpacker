@@ -5,4 +5,15 @@
 - [x] - create a unit test for instance creation
 - [x] getter/setter methods for instance property: path
 - [x] - create unit test for setting / getting instance property path
-- [x] - create a unit test to check the archive mimetype
+- [x] get/setMinetype methods for identifying archive file type
+- [x] - create a unit test to check the archive mime type
+- [x] whichTar: create a class method to find the local tar command
+- [x] - create a unit test to find local tar command
+- [x] whichGzip: create a class method to find the local gzip command
+- [x] - create a unit test to find the local gzip command
+- [ ] unpack: class method to unpack an archive file with either tar or gzip
+- [ ] - create a unit test to unpack a .tar file
+- [ ] - create a unit test to unpack a .tar.gz file
+- [ ] - create a unit test to unpack a .zip file
+- [ ] - create a unit test to unpack a .gz file
+- [ ] 
