@@ -139,6 +139,7 @@ export class Unpacker extends EventEmitter {
    * @return { undefined }
    */
   async whichTar() {
+    const tar = { path: null, version: null }
     try {
       let path = await cmd('which tar')
       path = path.stdout.trim()
@@ -146,10 +147,17 @@ export class Unpacker extends EventEmitter {
         this._tar = false
         return
       }
-      this._tar = path
+      tar.path = path
     } catch (e) {
       throw new Error(e)
     }
+    try {
+      const version = await cmd(`${tar.path} --version | awk '/([0-9]\.[0-9]+)$/ { print $NF}'`)
+      tar.version = version.stdout.trim()
+    } catch (e) {
+      throw new Error(e)
+    }
+    this._tar = tar
   }
 
   /**
@@ -161,6 +169,7 @@ export class Unpacker extends EventEmitter {
    * @return { undefined }
    */
   async whichGzip() {
+    const gzip = { path: null, version: null }
     try {
       let path = await cmd('which gzip')
       path = path.stdout.trim()
@@ -168,10 +177,17 @@ export class Unpacker extends EventEmitter {
         this._gzip = false
         return
       }
-      this._gzip = path
+      gzip.path = path
     } catch (e) {
       throw new Error(e)
     }
+    try {
+      const version = await cmd(`${gzip.path} --version | awk '/([0-9]+\.[0-9]+)$/ { print $NF }'`)
+      gzip.version = version.stdout.trim()
+    } catch (e) {
+      throw new Error(e)
+    }
+    this._gzip = gzip
   }
 
   /**
@@ -200,6 +216,27 @@ export class Unpacker extends EventEmitter {
    * @return { Object } An object literal with success or error messages.
    */
   async unpack() {
-    
+    if (this._tar === null && this._mimetype === TAR) {
+      throw new Error(`Archive is ${this._mimetype}, but can't find tar executable.`)
+    }
+    if (this.gzip === null && this._mimetype === GZIP) {
+      throw new Error(`Archive is ${this._mimetype}, but can't find gzip executable.`)
+    }
+    let unpack
+    if (this._mimetype === TAR) {
+      unpack = `${this._tar.path} xzf ${this._path}`
+    } else if (this._mimetype === GZIP) {
+      unpack = `${this._gzip.path} ${this._path}`
+    } else {
+      throw new Error(`Not an archive? ${this._path}`)
+    }
+    try {
+      const result = await cmd(unpack)
+      if (result.stderr !== '') {
+        throw new Error(result.stderr)
+      }
+    } catch (e) {
+      throw new Error()
+    }
   }
 }
