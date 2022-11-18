@@ -11,7 +11,9 @@
 - [x] - create a unit test to find local tar command
 - [x] whichGzip: create a class method to find the local gzip command
 - [x] - create a unit test to find the local gzip command
-- [ ] unpack: class method to unpack an archive file with either tar or gzip
+- [x] whichUnzip: create a class method to find the local unzip command
+- [x] - create a unit test to find the local unzip command
+- [x] unpack: class method to unpack an archive file with either tar or gzip
 - [ ] - create a unit test to unpack a .tar file
 - [ ] - create a unit test to unpack a .tar.gz file
 - [ ] - create a unit test to unpack a .zip file

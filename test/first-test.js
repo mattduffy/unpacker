@@ -1,4 +1,3 @@
-/* eslint-disable object-curly-newline */
 import { describe, it, before, after } from 'node:test'
 import assert from 'node:assert/strict'
 import path from 'node:path'
@@ -10,6 +9,7 @@ const debug = Debug('unpacker:test')
 const __dirname = path.resolve(path.dirname('.'))
 const tinyZip = `${__dirname}/test/tiny.zip`
 const tar = `${__dirname}/test/marquetry.tar`
+const tarGz = `${__dirname}/test/marguetry.tar.gz`
 const tarball = `${__dirname}/test/marquetry.tgz`
 const badPath = `${__dirname}/test/missingfile.tar.gz`
 
@@ -95,4 +95,19 @@ describe('checking for tar and gzip', () => {
     const hasGzip = unpacker.checkCommands()
     assert.strictEqual(/gzip/.test(hasGzip.gzip.path), true)
   })
+
+  it('should find a usable verion of unzip', async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(tinyZip)
+    const hasUnzip = unpacker.checkCommands()
+    assert.strictEqual(/unzip/.test(hasUnzip.unzip.path), true)
+  })
 })
+
+// describe('successfully unpack some archives', () => {
+//   it('should unpack a tar file', { skip: true }, async () => {
+//     const unpacker = new Unpacker()
+//     await unpacker.setPath(tarGz)
+//     
+//   })
+// })

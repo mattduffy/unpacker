@@ -36,9 +36,11 @@ export class Unpacker extends EventEmitter {
   constructor(pathToArchiveFile) {
     super()
     this._path = pathToArchiveFile || null
+    this._file = null
     this._mimetype = null
     this._tar = null
     this._gzip = null
+    this._unzip = null
   }
 
   /**
@@ -71,12 +73,16 @@ export class Unpacker extends EventEmitter {
       if (this._gzip === null) {
         await this.whichGzip()
       }
+      if (this._unzip === null) {
+        await this.whichUnzip()
+      }
       const stat = await fs.stat(filePath)
       if (!stat.isFile()) {
         throw new Error(`Not a file: ${filePath}`)
       } else {
         this._path = nodePath.resolve(filePath)
         await this.setMimetype(this._path)
+        this._file = nodePath.parse(this._path)
         return
       }
     } catch (e) {
@@ -191,6 +197,36 @@ export class Unpacker extends EventEmitter {
   }
 
   /**
+   * Find the location of the unzip executable.
+   * @summary Find the location of the unzip executable.
+   * @author Matthew Duffy <mattduffy@gmail.com>
+   * @async
+   * @throws { Error } Throws an error if search for unzip fails.
+   * @returns { undefined }
+   */
+  async whichUnzip() {
+    const unzip = { path: null, version: null }
+    try {
+      let path = await cmd('which unzip')
+      path = path.stdout.trim()
+      if (!/unzip/.test(path)) {
+        this._unzip = false
+        return
+      }
+      unzip.path = path
+    } catch (e) {
+      throw new Error(e)
+    }
+    try {
+      const version = await cmd(`${unzip.path} -v | awk '/^[Uu]n[Zz]ip ([0-9]+\.[0-9]+)/ { print $2 }'`)
+      unzip.version = version.stdout.trim()
+    } catch (e) {
+      throw new Error(e)
+    }
+    this._unzip = unzip
+  }
+
+  /**
    * Check for the presence of usable versions of tar and gzip.
    * @summary Check for the presence of usuable versions of tar and gzip.
    * @author Matthew Duffy <mattduffy@gmail.com>
@@ -203,7 +239,10 @@ export class Unpacker extends EventEmitter {
     if (this._gzip === null) {
       this.whichGzip()
     }
-    return { tar: this._tar, gzip: this._gzip }
+    if (this._unzip === null) {
+      this.whichUnzip()
+    }
+    return { tar: this._tar, gzip: this._gzip, unzip: this._unzip }
   }
 
   /**
@@ -224,19 +263,32 @@ export class Unpacker extends EventEmitter {
     }
     let unpack
     if (this._mimetype === TAR) {
-      unpack = `${this._tar.path} xzf ${this._path}`
+      unpack = `${this._tar.path} xf ${this._path}`
     } else if (this._mimetype === GZIP) {
-      unpack = `${this._gzip.path} ${this._path}`
+      // check if file is a tarball: .tar.gz or .tgz
+      if (/t(ar\.)?gz$/.test(this._file.base)) {
+        unpack = `${this._tar.path} xzf ${this._path}`
+      } else {
+        // file is probably a .gz or .zip
+        unpack = `${this._gzip.path} -d -S ${this._file.ext} ${this._path}`
+      }
+    } else if (this._mimetype === ZIP) {
+      unpack = `${this._unzip.path} ${this._path}`
     } else {
       throw new Error(`Not an archive? ${this._path}`)
     }
+    let result
     try {
-      const result = await cmd(unpack)
+      debug(unpack)
+      result = await cmd(unpack)
+      debug(result)
       if (result.stderr !== '') {
         throw new Error(result.stderr)
       }
     } catch (e) {
-      throw new Error()
+      debug(e)
+      throw new Error(e)
     }
+    return result
   }
 }
