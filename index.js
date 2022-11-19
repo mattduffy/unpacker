@@ -41,6 +41,8 @@ export class Unpacker extends EventEmitter {
     this._tar = null
     this._gzip = null
     this._unzip = null
+    this._cwd = process.cwd()
+    this.__dirname = __dirname
   }
 
   /**
@@ -251,10 +253,12 @@ export class Unpacker extends EventEmitter {
    * @summary Extract the contents of the archive into a directory, with the name of the archive.
    * @author Matthew Duffy <mattduffy@gmail.com>
    * @async
+   * @param { string } moveTo - A file system location to move the unpacked archive to.
    * @throws { Error } Throws an error if the archive could not be unpacked.
    * @return { Object } An object literal with success or error messages.
    */
-  async unpack() {
+  async unpack(moveTo) {
+    let destination = moveTo || '.'
     if (this._tar === null && this._mimetype === TAR) {
       throw new Error(`Archive is ${this._mimetype}, but can't find tar executable.`)
     }
@@ -278,13 +282,29 @@ export class Unpacker extends EventEmitter {
       throw new Error(`Not an archive? ${this._path}`)
     }
     let result
+    let stats
+    let tempDir
+    destination = nodePath.resolve(destination)
     try {
-      debug(unpack)
+      debug(`unpack: ${unpack}`)
       result = await cmd(unpack)
       debug(result)
       if (result.stderr !== '') {
         throw new Error(result.stderr)
       }
+      /**
+       * @todo - if .tar.gz - have to remove the .tar from the file basename - do this futher up where this._file is set.
+       * @todo - move the unpacked directory to the @param destination.
+       */
+      tempDir = `${this._cwd}/${this._file.name}`
+      stats = await fs.stat(tempDir)
+      if (!stats.isDirectory()) {
+        result.unpacked = null
+        result.location = null
+      }
+      result.destination = destination
+      result.unpacked = true
+      result.location = tempDir
     } catch (e) {
       debug(e)
       throw new Error(e)
