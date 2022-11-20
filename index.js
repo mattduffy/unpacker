@@ -72,12 +72,24 @@ export class Unpacker extends EventEmitter {
       if (this._tar === null) {
         await this.whichTar()
       }
+    } catch (e) {
+      throw new Error('Failed to find tar.')
+    }
+    try {
       if (this._gzip === null) {
         await this.whichGzip()
       }
+    } catch (e) {
+      throw new Error('Failed to find gzip.')
+    }
+    try {
       if (this._unzip === null) {
         await this.whichUnzip()
       }
+    } catch (e) {
+      throw new Error('Failed to find unzip.')
+    }
+    try {
       const stat = await fs.stat(filePath)
       if (!stat.isFile()) {
         throw new Error(`Not a file: ${filePath}`)
@@ -285,6 +297,7 @@ export class Unpacker extends EventEmitter {
     let stats
     let tempDir
     destination = nodePath.resolve(destination)
+    destination = destination.replace(/(.*[^\/])$/, '$1/')
     try {
       debug(`unpack: ${unpack}`)
       result = await cmd(unpack)
@@ -292,19 +305,24 @@ export class Unpacker extends EventEmitter {
       if (result.stderr !== '') {
         throw new Error(result.stderr)
       }
-      /**
-       * @todo - if .tar.gz - have to remove the .tar from the file basename - do this futher up where this._file is set.
-       * @todo - move the unpacked directory to the @param destination.
-       */
+      this._file.name = this._file.name.replace(/\.tar$/, '')
       tempDir = `${this._cwd}/${this._file.name}`
       stats = await fs.stat(tempDir)
       if (!stats.isDirectory()) {
         result.unpacked = null
-        result.location = null
+        result.cwd = null
       }
-      result.destination = destination
       result.unpacked = true
-      result.location = tempDir
+      result.cwd = tempDir
+      try {
+        const mv = `mv ${tempDir} ${destination}`
+        const move = await cmd(mv)
+        result.destination = destination
+        debug(move)
+      } catch (e) {
+        const cause = new Error(`Error ocurred trying to move ${tempDir} to ${destination}`)
+        throw new Error(e, { cause })
+      }
     } catch (e) {
       debug(e)
       throw new Error(e)
