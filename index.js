@@ -172,6 +172,7 @@ export class Unpacker extends EventEmitter {
       throw new Error(e)
     }
     try {
+      /* eslint-disable-next-line no-useless-escape */
       const version = await cmd(`${tar.path} --version | awk '/([0-9]\.[0-9]+)$/ { print $NF}'`)
       tar.version = version.stdout.trim()
     } catch (e) {
@@ -202,6 +203,7 @@ export class Unpacker extends EventEmitter {
       throw new Error(e)
     }
     try {
+      /* eslint-disable-next-line no-useless-escape */
       const version = await cmd(`${gzip.path} --version | awk '/([0-9]+\.[0-9]+)$/ { print $NF }'`)
       gzip.version = version.stdout.trim()
     } catch (e) {
@@ -232,6 +234,7 @@ export class Unpacker extends EventEmitter {
       throw new Error(e)
     }
     try {
+      /* eslint-disable-next-line no-useless-escape */
       const version = await cmd(`${unzip.path} -v | awk '/^[Uu]n[Zz]ip ([0-9]+\.[0-9]+)/ { print $2 }'`)
       unzip.version = version.stdout.trim()
     } catch (e) {
@@ -299,6 +302,7 @@ export class Unpacker extends EventEmitter {
     let stats
     let tempDir
     destination = nodePath.resolve(destination)
+    /* eslint-disable-next-line no-useless-escape */
     destination = destination.replace(/(.*[^\/])$/, '$1/')
     try {
       debug(`unpack: ${unpack}`)
