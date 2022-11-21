@@ -276,6 +276,9 @@ export class Unpacker extends EventEmitter {
   async unpack(moveTo, opts) {
     let destination = moveTo || '.'
     const options = { force: true, backup: 'numbered', ...opts }
+    if (process.platform === 'darwin') {
+      options.backup = false
+    }
     if (this._tar === null && this._mimetype === TAR) {
       throw new Error(`Archive is ${this._mimetype}, but can't find tar executable.`)
     }
@@ -321,7 +324,7 @@ export class Unpacker extends EventEmitter {
       result.unpacked = true
       result.cwd = tempDir
       try {
-        const mv = `mv ${(options.force ? '--force' : '')} ${(options.backup === 'numbered' ? '--backup=numbered' : '')} ${tempDir} ${destination}`
+        const mv = `mv ${(options.force ? '-f' : '')} ${(options.backup === 'numbered' ? '--backup=numbered' : '')} ${tempDir} ${destination}`
         const move = await cmd(mv)
         result.destination = destination
         debug(move)
