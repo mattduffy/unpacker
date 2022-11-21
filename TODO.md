@@ -14,8 +14,7 @@
 - [x] whichUnzip: create a class method to find the local unzip command
 - [x] - create a unit test to find the local unzip command
 - [x] unpack: class method to unpack an archive file with either tar or gzip
-- [ ] - create a unit test to unpack a .tar file
-- [ ] - create a unit test to unpack a .tar.gz file
-- [ ] - create a unit test to unpack a .zip file
-- [ ] - create a unit test to unpack a .gz file
-- [ ] 
+- [x] - create a unit test to unpack a .tar.gz file
+- [x] - create a unit test to unpack a .zip file
+- [x] - create a unit test to verify moving unpacked directory to destination
+- [x] clean up any unwanted artifacts from unpacking, like \__MACOSX resource files

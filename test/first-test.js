@@ -1,17 +1,21 @@
-import { describe, it, before, after } from 'node:test'
+import { describe, it, before, after, afterEach } from 'node:test'
 import assert from 'node:assert/strict'
 import path from 'node:path'
+import { promisify } from 'node:util'
+import { exec } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 import Debug from 'debug'
 import { Unpacker } from '../index.js'
 
+const cmd = promisify(exec)
 const debug = Debug('unpacker:test')
 const __dirname = path.resolve(path.dirname('.'))
 const tinyZip = `${__dirname}/test/tiny.zip`
 const tar = `${__dirname}/test/marquetry.tar`
-const tarGz = `${__dirname}/test/marguetry.tar.gz`
+const tarGz = `${__dirname}/test/marquetry.tar.gz`
 const tarball = `${__dirname}/test/marquetry.tgz`
 const badPath = `${__dirname}/test/missingfile.tar.gz`
+const destination = `${__dirname}/test/static/albums`
 
 before('before tests, setup', () => {
   debug('before tests, setup')
@@ -104,10 +108,31 @@ describe('checking for tar and gzip', () => {
   })
 })
 
-// describe('successfully unpack some archives', () => {
-//   it('should unpack a tar file', { skip: true }, async () => {
-//     const unpacker = new Unpacker()
-//     await unpacker.setPath(tarGz)
-//     
-//   })
-// })
+describe('successfully unpack some archives', () => {
+  // afterEach(async () => {
+  //   try {
+  //     const result = await cmd(`rm -rf ${destination}/*`)
+  //     debug(result)
+  //   } catch (e) {
+  //     debug(e)
+  //   }
+  // })
+
+  it('should unpack and move a .tar.gz file', async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(tarGz)
+    const result = await unpacker.unpack(destination)
+    debug(`destination: ${destination}`)
+    debug(`result.destination: ${result.destination}`)
+    const re = new RegExp(`${destination}`)
+    assert.match(result.destination, re)
+  })
+
+  it('should unpack and move a .zip file', async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(tinyZip)
+    const re = new RegExp(`${destination}`)
+    const result = await unpacker.unpack(destination)
+    assert.match(result.destination, re)
+  })
+})

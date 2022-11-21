@@ -266,11 +266,13 @@ export class Unpacker extends EventEmitter {
    * @author Matthew Duffy <mattduffy@gmail.com>
    * @async
    * @param { string } moveTo - A file system location to move the unpacked archive to.
+   * @param { object } options - An object literal with options for mv command.
    * @throws { Error } Throws an error if the archive could not be unpacked.
    * @return { Object } An object literal with success or error messages.
    */
-  async unpack(moveTo) {
+  async unpack(moveTo, opts) {
     let destination = moveTo || '.'
+    const options = { force: true, backup: 'numbered', ...opts }
     if (this._tar === null && this._mimetype === TAR) {
       throw new Error(`Archive is ${this._mimetype}, but can't find tar executable.`)
     }
@@ -315,7 +317,7 @@ export class Unpacker extends EventEmitter {
       result.unpacked = true
       result.cwd = tempDir
       try {
-        const mv = `mv ${tempDir} ${destination}`
+        const mv = `mv ${(options.force ? '--force' : '')} ${(options.backup === 'numbered' ? '--backup=numbered' : '')} ${tempDir} ${destination}`
         const move = await cmd(mv)
         result.destination = destination
         debug(move)
@@ -327,6 +329,29 @@ export class Unpacker extends EventEmitter {
       debug(e)
       throw new Error(e)
     }
+    try {
+      await this.cleanup('__MACOSX')
+      await this.cleanup(`._${this._file.name}`)
+    } catch (e) {
+      debug(e)
+    }
     return result
+  }
+
+  /**
+   * Clean up after the unpacking, delete any weird artifacts like __MACOSX resource things.
+   * @summary Clean up after the unpacking, delete any weird artifacts like __MACOSX resource things.
+   * @author Matthew Duffy <mattduffy@gmail.com>
+   * @async
+   * @param { string } artifact - String name of something to look for after unpacking, to be deleted.
+   * @return { undefined }
+   */
+  async cleanup(artifact) {
+    const x = `${this._cwd}/${artifact}`
+    try {
+      await cmd(`rm -rf ${x}`)
+    } catch (e) {
+      debug(e)
+    }
   }
 }
