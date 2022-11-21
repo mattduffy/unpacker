@@ -4,6 +4,7 @@ images/*_original
 *.config.test
 .*.swp
 ._*
+__MACOSX
 .DS_Store
 .git
 .npmrc
