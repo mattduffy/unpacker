@@ -247,17 +247,18 @@ export class Unpacker extends EventEmitter {
    * Check for the presence of usable versions of tar and gzip.
    * @summary Check for the presence of usuable versions of tar and gzip.
    * @author Matthew Duffy <mattduffy@gmail.com>
+   * @async
    * @return { Object } An object literal with success or error messages.
    */
-  checkCommands() {
+  async checkCommands() {
     if (this._tar === null) {
-      this.whichTar()
+      await this.whichTar()
     }
     if (this._gzip === null) {
-      this.whichGzip()
+      await this.whichGzip()
     }
     if (this._unzip === null) {
-      this.whichUnzip()
+      await this.whichUnzip()
     }
     return { tar: this._tar, gzip: this._gzip, unzip: this._unzip }
   }
