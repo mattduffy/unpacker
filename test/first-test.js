@@ -1,6 +1,7 @@
 import { describe, it, before, after, afterEach } from 'node:test'
 import assert from 'node:assert/strict'
 import path from 'node:path'
+import fs from 'node:fs/promises'
 import { promisify } from 'node:util'
 import { exec } from 'node:child_process'
 import { EventEmitter } from 'node:events'
@@ -89,34 +90,36 @@ describe('checking for tar and gzip', () => {
   it('should find a usable version of tar', async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tarball)
-    const hasTar = unpacker.checkCommands()
+    const hasTar = await unpacker.checkCommands()
     assert.strictEqual(/tar/.test(hasTar.tar.path), true)
   })
 
   it('should find a usable verion of gzip', async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tarball)
-    const hasGzip = unpacker.checkCommands()
+    const hasGzip = await unpacker.checkCommands()
     assert.strictEqual(/gzip/.test(hasGzip.gzip.path), true)
   })
 
   it('should find a usable verion of unzip', async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tinyZip)
-    const hasUnzip = unpacker.checkCommands()
+    const hasUnzip = await unpacker.checkCommands()
     assert.strictEqual(/unzip/.test(hasUnzip.unzip.path), true)
   })
 })
 
 describe('successfully unpack some archives', () => {
-  // afterEach(async () => {
-  //   try {
-  //     const result = await cmd(`rm -rf ${destination}/*`)
-  //     debug(result)
-  //   } catch (e) {
-  //     debug(e)
-  //   }
-  // })
+  before(async () => {
+    try {
+      const result = await fs.stat(destination)
+      if (!result.isDirectory()) {
+        await cmd(`mkdir -p ${destination}`)
+      }
+    } catch (e) {
+      debug(`Missing the test destination dir: ${destination}`)
+    }
+  })
 
   it('should unpack and move a .tar.gz file', async () => {
     const unpacker = new Unpacker()
