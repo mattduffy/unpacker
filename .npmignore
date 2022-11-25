@@ -1,5 +1,6 @@
+TODO.md
 tmp
-test/static/albums/*
+test/static
 images/*_original
 *.config.bk
 *.config.test

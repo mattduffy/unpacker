@@ -1,7 +1,16 @@
 {
   "name": "@mattduffy/unpacker",
   "version": "1.0.0",
-  "description": "",
+  "description": "A simple object oriented wrapper for unpacking zip, gzip or tar archives.",
+  "keywords": [
+    "tar",
+    "gzip",
+    "zip",
+    "unpack",
+    "decompress",
+    "uncompress",
+    "archives"
+  ],
   "main": "index.js",
   "type": "module",
   "exports": {
