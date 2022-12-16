@@ -6,7 +6,7 @@ import { promisify } from 'node:util'
 import { exec } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 import Debug from 'debug'
-import { Unpacker } from '../index.js'
+import { Unpacker } from '../src/index.js'
 
 const cmd = promisify(exec)
 const debug = Debug('unpacker:test')

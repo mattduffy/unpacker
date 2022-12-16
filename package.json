@@ -14,14 +14,13 @@
   "main": "index.js",
   "type": "module",
   "exports": {
-    "import": "./index.js",
+    "import": "./src/index.js",
     "package.json": "./package.json",
     "test": "./test/*-test.js",
     "jest": "./__tests__/*.js"
   },
   "scripts": {
-    "test": "DEBUG=unpacker:* node --test test/",
-    "jest": "DEBUG=unpacker:* node --experimental-vm-modules node_modules/jest/bin/jest.js"
+    "test": "DEBUG=unpacker:* node --test test/"
   },
   "author": "Matthew Duffy",
   "license": "ISC",
