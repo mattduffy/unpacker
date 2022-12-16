@@ -18,3 +18,6 @@
 - [x] - create a unit test to unpack a .zip file
 - [x] - create a unit test to verify moving unpacked directory to destination
 - [x] clean up any unwanted artifacts from unpacking, like \__MACOSX resource files
+- [ ] list: class method to list tar file entries (without extracting)
+- [ ] - create a unit test to list entries in a .tar archive
+- [ ] - create a unit test to list entires in a compressed .t[ar\.]gz archive
