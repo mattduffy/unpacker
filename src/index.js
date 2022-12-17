@@ -101,12 +101,16 @@ export class Unpacker extends EventEmitter {
         this._path = nodePath.resolve(filePath)
         await this.setMimetype(this._path)
         this._file = nodePath.parse(this._path)
-        this.setExtension(filePath)
-        return
       }
     } catch (e) {
       throw new Error(`Not a valid file path: ${filePath}`)
     }
+    try {
+      this.setExtension(filePath)
+    } catch (e) {
+      throw new Error(`File extension problem: ${filePath}`)
+    }
+    return undefined
   }
 
   /**

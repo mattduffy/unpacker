@@ -22,6 +22,13 @@
 - [ ] - create a unit test to verify file extension
 - [x] getExtension: class method to return the file extension of the archive
 - [ ] - create a unit test to verify returned file extension
-- [x] list: class method to list tar file entries (without extracting)
+- [x] list: class proxy method to list contents of the archive - tar t / unzip -l
 - [ ] - create a unit test to list entries in a .tar archive
 - [ ] - create a unit test to list entires in a compressed .t[ar\.]gz archive
+- [ ] tar_t: class method to list tar file entries (without extracting)
+- [ ] - create a unit test to list entries in a .tar archive
+- [ ] - create a unit test to list entires in a compressed .t[ar\.]gz archive
+- [ ] unzip_l: class method to list zip file entries (without extracting)
+- [ ] - create a unit test to list entries in a .zip archive
+- [ ] gunzip_l: class method to list zip file entries (without extracting)
+- [ ] - create a unit test to list entries in a .gz archive

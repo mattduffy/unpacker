@@ -12,6 +12,7 @@ const cmd = promisify(exec)
 const debug = Debug('unpacker:test')
 const __dirname = path.resolve(path.dirname('.'))
 const tinyZip = `${__dirname}/test/tiny.zip`
+const gz = `${__dirname}/test/singleton.jpg.gz`
 const tar = `${__dirname}/test/marquetry.tar`
 const tarGz = `${__dirname}/test/marquetry.tar.gz`
 const tarball = `${__dirname}/test/marquetry.tgz`
@@ -106,6 +107,43 @@ describe('checking for tar and gzip', () => {
     await unpacker.setPath(tinyZip)
     const hasUnzip = await unpacker.checkCommands()
     assert.strictEqual(/unzip/.test(hasUnzip.unzip.path), true)
+  })
+})
+
+describe('get the file extension of the archive file', async () => {
+  it('should correctly extract the file extension from a .tar file', async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(tar)
+    assert.ok(unpacker._fileExt === '.tar')
+    assert.ok(unpacker.getExtension() === '.tar')
+  })
+
+  it('should correctly extract the file extension from a .tar.gz file', async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(tarGz)
+    assert.ok(unpacker._fileExt === '.tar.gz')
+    assert.ok(unpacker.getExtension() === '.tar.gz')
+  })
+
+  it('should correctly extract the file extension from a .tgz file', async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(tarball)
+    assert.ok(unpacker._fileExt === '.tgz')
+    assert.ok(unpacker.getExtension() === '.tgz')
+  })
+
+  it('should correctly extract the file extension from a .gz file', async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(gz)
+    assert.ok(unpacker._fileExt === '.gz')
+    assert.ok(unpacker.getExtension() === '.gz')
+  })
+
+  it('should correctly extract the file extension from a .zip file', async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(tinyZip)
+    assert.ok(unpacker._fileExt === '.zip')
+    assert.ok(unpacker.getExtension() === '.zip')
   })
 })
 
