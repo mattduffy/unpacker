@@ -40,6 +40,8 @@ export class Unpacker extends EventEmitter {
     this._mimetype = null
     this._fileExt = null
     this._fileList = null
+    this._isTarFile = null
+    this._isCompressed = null
     this._tar = null
     this._gzip = null
     this._unzip = null
@@ -166,7 +168,13 @@ export class Unpacker extends EventEmitter {
     if (ext === null) {
       throw new Error(`File ${file} does not look like a (compressed) archive file.`)
     }
-    debug(`file extension: ${ext[0]}`);
+    debug(`file extension: ${ext[0]}`)
+    if (['.tar', '.tar.gz', '.tgz'].includes(ext[0])) {
+      this._isTarFile = true
+    }
+    if (this._mimetype === ZIP || this._mimetype === GZIP) {
+      this._isCompressed = true
+    }
     [this._fileExt] = ext
   }
 
@@ -385,8 +393,21 @@ export class Unpacker extends EventEmitter {
    * @throws { Error } Throws an error if the contents of the Tar file cannont be listed.
    * @return { Object } An object literal with an array of file names.
    */
-  async list(tarFile=null) {
-    
+  async list(tarFile = this._path) {
+    debug(tarFile)
+    const o = {}
+    try {
+      const tar = `tar t${(this._isCompressed ? 'z' : '')}f `
+      debug(`cmd: ${tar} ${tarFile}`)
+      o.cmd = `${tar} ${tarFile}`
+      const result = await cmd(`${tar} ${tarFile}`)
+      debug(result.stdout)
+      const list = result.stdout.trim().split('\n')
+      o.list = list
+    } catch (e) {
+      throw new Error(`Couldn't Tar tail the archive ${tarFile}`)
+    }
+    return o
   }
 
   /**

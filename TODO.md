@@ -22,6 +22,6 @@
 - [ ] - create a unit test to verify file extension
 - [x] getExtension: class method to return the file extension of the archive
 - [ ] - create a unit test to verify returned file extension
-- [ ] list: class method to list tar file entries (without extracting)
+- [x] list: class method to list tar file entries (without extracting)
 - [ ] - create a unit test to list entries in a .tar archive
 - [ ] - create a unit test to list entires in a compressed .t[ar\.]gz archive
