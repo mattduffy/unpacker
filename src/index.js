@@ -38,6 +38,8 @@ export class Unpacker extends EventEmitter {
     this._path = pathToArchiveFile || null
     this._file = null
     this._mimetype = null
+    this._fileExt = null
+    this._fileList = null
     this._tar = null
     this._gzip = null
     this._unzip = null
@@ -97,6 +99,7 @@ export class Unpacker extends EventEmitter {
         this._path = nodePath.resolve(filePath)
         await this.setMimetype(this._path)
         this._file = nodePath.parse(this._path)
+        this.setExtension(filePath)
         return
       }
     } catch (e) {
@@ -148,6 +151,33 @@ export class Unpacker extends EventEmitter {
     } catch (e) {
       throw new Error(`File not found: ${file}`)
     }
+  }
+
+  /**
+   * Set the file extension of the archive file name.
+   * @summary Get the file extension of the archive file name.
+   * @author Matthew Duffy <mattduffy@gmail.com>
+   * @param { string } file - A file system path to the file.
+   * @throws { Error } Throws an errof if the file path is invalid.
+   * @returns { undefined }
+   */
+  setExtension(file = this._file) {
+    const ext = /\.*(\.(t(ar)?(\.?gz)?)|(zip)?|(gz)?)$/.exec(file)
+    if (ext === null) {
+      throw new Error(`File ${file} does not look like a (compressed) archive file.`)
+    }
+    debug(`file extension: ${ext[0]}`);
+    [this._fileExt] = ext
+  }
+
+  /**
+   * Get the file extension of the archive file name.
+   * @summary Get the file extension of the archive file name.
+   * @author Matthew Duffy <mattduffy@gmail.com>
+   * return { string } The archive file extension.
+   */
+  getExtension() {
+    return this._fileExt
   }
 
   /**
@@ -344,6 +374,19 @@ export class Unpacker extends EventEmitter {
       debug(e)
     }
     return result
+  }
+
+  /**
+   * List the contents of a Tar file.
+   * @summary List the contents of a Tar file.
+   * @author Matthew Duffy <mattduffy@gmail.com>
+   * @async
+   * @param { string } tarFile - A string containing the name of the Tar file.
+   * @throws { Error } Throws an error if the contents of the Tar file cannont be listed.
+   * @return { Object } An object literal with an array of file names.
+   */
+  async list(tarFile=null) {
+    
   }
 
   /**
