@@ -63,7 +63,21 @@ console.log(result)
 //   unpacked: true,
 //   cwd: '/www/app/uploads/myPhotos',
 //   destination: '/www/app/static/albums/'
-}
+// }
+```
+
+Unpacker provides a way to peek inside the archive file without having to extract the contents to the file system using the ```list()``` method.  After the ```setPath()``` method has been called, setting the location of the archive file, this method will return an object containing an array of file names and the native command of the archive binary used.  This is an **Async/Await** method.
+```javascript
+const unpacker = new Unpacker()
+await unpacker.setPath('uploads/files.tar.gz')
+const { list } = await unpacker.list()
+console.log(list)
+// list: [
+//   'files/',
+//   'files/file-2.txt',
+//   'files/file-1.txt',
+//   'files/file-3.txt'
+// ]
 ```
 
 If there are problems with the unpacking process, the method will throw an error.  Upon successful unpacking and moving files to the target destination, the Unpacker instance will make an effort to clean up the weird artifacts that may have been created (like "dot" hidden resource folders ```.myPhotos``` or \__MACOSX ).
