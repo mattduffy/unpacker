@@ -37,11 +37,14 @@ export class Unpacker extends EventEmitter {
     super()
     this._path = pathToArchiveFile || null
     this._file = null
-    this._mimetype = null
+    this._fileBasename = null
     this._fileExt = null
+    this._mimetype = null
     this._fileList = null
-    this._isTarFile = null
-    this._isCompressed = null
+    this._isTarFile = false
+    this._isGzipFile = false
+    this._isZipFile = false
+    this._isCompressed = false
     this._tar = null
     this._gzip = null
     this._unzip = null
@@ -110,6 +113,11 @@ export class Unpacker extends EventEmitter {
     } catch (e) {
       throw new Error(`File extension problem: ${filePath}`)
     }
+    try {
+      this.setFileBasename(filePath)
+    } catch (e) {
+      throw new Error(`File basename problem: ${filePath}`)
+    }
     return undefined
   }
 
@@ -173,11 +181,29 @@ export class Unpacker extends EventEmitter {
       throw new Error(`File ${file} does not look like a (compressed) archive file.`)
     }
     debug(`file extension: ${ext[0]}`)
-    if (['.tar', '.tar.gz', '.tgz'].includes(ext[0])) {
-      this._isTarFile = true
-    }
-    if (this._mimetype === ZIP || this._mimetype === GZIP) {
+    if (this._mimetype === ZIP) {
       this._isCompressed = true
+      this._isZipFile = true
+      this._isGzipFile = false
+      this._isTarFile = false
+    }
+    if (this._mimetype === GZIP) {
+      this._isCompressed = true
+      this._isGzipFile = true
+      this._isZipFile = false
+      this._isTarFile = false
+    }
+    if (/\.?tar$/.test(ext[0])) {
+      this._isTarFile = true
+      this._isCompressed = false
+      this._isZipFile = false
+      this._isGzipFile = false
+    }
+    if (['.tar.gz', '.tgz'].includes(ext[0])) {
+      this._isCompressed = true
+      this._isTarFile = true
+      this.isGzipFile = true
+      this._isZipFile = false
     }
     [this._fileExt] = ext
   }
@@ -190,6 +216,29 @@ export class Unpacker extends EventEmitter {
    */
   getExtension() {
     return this._fileExt
+  }
+
+  /**
+   * Set the file base name (without the file extension).
+   * @summary Set the file base name (without the file extension).
+   * @author Matthew Duffy <mattduffy@gmail.com>
+   * @return { undefined }
+   */
+  setFileBasename() {
+    /* eslint-disable-next-line no-useless-escape */
+    // const pattern = `^.*${}\/(.+)$/`;
+    const pattern = `^(.*)${this._fileExt}$`;
+    [, this._fileBasename] = this._file.base.match(pattern)
+  }
+
+  /**
+   * Get the file base name (without the file extension).
+   * @summary Get the file base name (without the file extension).
+   * @author Matthew Duffy <mattduffy@gmail.com>
+   * @return { string } The base name of the file (without the file extension).
+   */
+  getFileBasename() {
+    return this._fileBasename
   }
 
   /**
@@ -329,18 +378,19 @@ export class Unpacker extends EventEmitter {
       throw new Error(`Archive is ${this._mimetype}, but can't find gzip executable.`)
     }
     let unpack
+    const excludes = '--exclude=__MACOSX* --exclude=._* --exclude=.git* --exclude=.svn* '
     if (this._mimetype === TAR) {
       unpack = `${this._tar.path} xf ${this._path}`
     } else if (this._mimetype === GZIP) {
-      // check if file is a tarball: .tar.gz or .tgz
-      if (/t(ar\.)?gz$/.test(this._file.base)) {
-        unpack = `${this._tar.path} xzf ${this._path}`
+      // check if file is a compressed tar file: .tar.gz or .tgz
+      if (this._isTarFile && this._isCompressed) {
+        unpack = `${this._tar.path} ${excludes} -xzf ${this._path}`
       } else {
         // file is probably a .gz or .zip
         unpack = `${this._gzip.path} -d -S ${this._file.ext} ${this._path}`
       }
     } else if (this._mimetype === ZIP) {
-      unpack = `${this._unzip.path} ${this._path}`
+      unpack = `${this._unzip.path} ${this._path} -x __MACOSX*`
     } else {
       throw new Error(`Not an archive? ${this._path}`)
     }
@@ -397,11 +447,42 @@ export class Unpacker extends EventEmitter {
    * @throws { Error } Throws an error if the contents of the Tar file cannont be listed.
    * @return { Object } An object literal with an array of file names.
    */
-  async list(tarFile = this._path) {
+  async list(file = this._path) {
+    let list
+    debug(this._isTarFile)
+    try {
+      if (this._isTarFile) {
+        list = this.tar_t(file)
+      }
+      if (this._isGzipFile && !this._isTarFile) {
+        list = this.gunzip_l(file)
+      }
+      if (this._isZipFile) {
+        list = this.unzip_l(file)
+      }
+    } catch (e) {
+      const cause = e
+      throw new Error(`Failed to list contents of archive: ${file}`, { cause })
+    }
+    return list
+  }
+
+  /**
+   * List the contents of a Tar file.  Called by the proxy method, list().
+   * @summary List the contents of a Tar file.  Called by the proxy method, list().
+   * @see list
+   * @author Matthew Duffy <mattduffy@gmail.com>
+   * @async
+   * @param { string } tarFile - A string containing the name of the Tar file.
+   * @throws { Error } Throws an error if the contents of the Tar file cannot be listed.
+   * @return { Object } An object literal with an array of the file names.
+   */
+  async tar_t(tarFile = this._path) {
     debug(tarFile)
     const o = {}
     try {
-      const tar = `tar t${(this._isCompressed ? 'z' : '')}f `
+      const excludes = '--exclude=__MACOSX --exclude=._* --exclude=.svn --exclude=.git*'
+      const tar = `tar ${excludes} -t${(this._isCompressed ? 'z' : '')}f`
       debug(`cmd: ${tar} ${tarFile}`)
       o.cmd = `${tar} ${tarFile}`
       const result = await cmd(`${tar} ${tarFile}`)
@@ -410,6 +491,75 @@ export class Unpacker extends EventEmitter {
       o.list = list
     } catch (e) {
       throw new Error(`Couldn't Tar tail the archive ${tarFile}`)
+    }
+    return o
+  }
+
+  /**
+   * List the single file contents of a Gzip file.  Called by the proxy method, list().
+   * @summary List the single file contents of a Gzip file.  Called by the proxy method, list().
+   * @author Matthew Duffy <mattduffy@gmail.com>
+   * @see list
+   * @async
+   * @param { string } gzFile - A string containing the name of the Gzip file.
+   * @throws { Error } Throws an error if the contents of the Gzip file cannot be listed.
+   * @return { Object } An object literal with the file name.
+   */
+  async gunzip_l(gzFile = this._file) {
+    debug(gzFile)
+    const o = {}
+    try {
+      const gunzip = 'gunzip -l --quiet'
+      debug(`cmd: ${gunzip} ${gzFile}`)
+      o.cmd = `${gunzip} ${gzFile}`
+      const result = await cmd(`${gunzip} ${gzFile}`)
+      debug(result)
+      const list = result.stdout.trim().split('\n')
+      /* eslint-disable-next-line no-useless-escape */
+      const pattern = '^.*\/(.+)$'
+      const re = new RegExp(pattern)
+      list.forEach((e, i) => {
+        debug(pattern)
+        list[i] = e.replace(re, '$1')
+      })
+      o.list = list
+    } catch (e) {
+      throw new Error(`Couldn't Gunzip list the archive contents ${gzFile}`)
+    }
+    return o
+  }
+
+  /**
+   * List the contents of a Zip file.  Called by the proxy method, list().
+   * @summary List the contents of a Zip file.  Called by the proxy method, list().
+   * @see list
+   * @author Matthew Duffy <mattduffy@gmail.com>
+   * @async
+   * @param { string } zipFile - A string containing the name of the Zip file.
+   * @throws { Error } Throws an errof if the contents of the Zip file cannot be listed.
+   * @return { Object } An object literal with an array of the file names.
+   */
+  async unzip_l(zipFile = this._path) {
+    debug(zipFile)
+    const o = {}
+    try {
+      const unzip = 'unzip -qql '
+      const excludes = '-x __MACOSX* -x ._*'
+      debug(`cmd: ${unzip} ${zipFile} ${excludes}`)
+      o.cmd = `${unzip} ${zipFile}`
+      const result = await cmd(`${unzip} ${zipFile} ${excludes}`)
+      debug(result.stdout)
+      const list = result.stdout.trim().split('\n').slice(1)
+      /* eslint-disable-next-line no-useless-escape */
+      const pattern = `^.*${this._fileBasename}\\/(.+)$`
+      const re = new RegExp(pattern)
+      list.forEach((e, i) => {
+        debug(pattern)
+        list[i] = e.replace(re, '$1')
+      })
+      o.list = list
+    } catch (e) {
+      throw new Error(`Couldn't Unzip list the archive ${zipFile}`)
     }
     return o
   }

@@ -14,21 +14,22 @@
 - [x] whichUnzip: create a class method to find the local unzip command
 - [x] - create a unit test to find the local unzip command
 - [x] unpack: class method to unpack an archive file with either tar or gzip
+  [x] - add --exclude* arguments to TAR to skip file like .git ._<filename>, \__MACOSX
 - [x] - create a unit test to unpack a .tar.gz file
 - [x] - create a unit test to unpack a .zip file
 - [x] - create a unit test to verify moving unpacked directory to destination
 - [x] clean up any unwanted artifacts from unpacking, like \__MACOSX resource files
 - [x] setExtension: class method to get the file extension of the archive
-- [ ] - create a unit test to verify file extension
+- [x] - create a unit test to verify file extension
 - [x] getExtension: class method to return the file extension of the archive
-- [ ] - create a unit test to verify returned file extension
-- [x] list: class proxy method to list contents of the archive - tar t / unzip -l
-- [ ] - create a unit test to list entries in a .tar archive
-- [ ] - create a unit test to list entires in a compressed .t[ar\.]gz archive
-- [ ] tar_t: class method to list tar file entries (without extracting)
-- [ ] - create a unit test to list entries in a .tar archive
-- [ ] - create a unit test to list entires in a compressed .t[ar\.]gz archive
-- [ ] unzip_l: class method to list zip file entries (without extracting)
-- [ ] - create a unit test to list entries in a .zip archive
-- [ ] gunzip_l: class method to list zip file entries (without extracting)
-- [ ] - create a unit test to list entries in a .gz archive
+- [x] - create a unit test to verify returned file extension
+- [x] tar_t: class method to list tar file entries (without extracting)
+- [x] - create a unit test to list entries in a .tar archive
+- [x] - create a unit test to list entires in a compressed .t[ar\.]gz archive
+- [x] unzip_l: class method to list zip file entries (without extracting)
+- [x] - create a unit test to list entries in a .zip archive
+- [x] gunzip_l: class method to list zip file entries (without extracting)
+- [x] - create a unit test to list entries in a .gz archive
+- [x] list: class proxy method to list contents of the archive - tar t / unzip -l / gunzip -l
+- [x] - create a unit test to list entries in a .tar archive
+- [x] - create a unit test to list entires in a compressed .t[ar\.]gz archive

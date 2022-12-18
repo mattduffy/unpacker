@@ -147,6 +147,43 @@ describe('get the file extension of the archive file', async () => {
   })
 })
 
+describe('successfully list the contents of the archive file', async () => {
+  it('should correctly list the contents of a .tar file', async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(tar)
+    const { list } = await unpacker.list()
+    assert.ok(list.length > 1)
+  })
+
+  it('should correctly list the contents of a .tar.gz file', async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(tarGz)
+    const { list } = await unpacker.list()
+    assert.ok(list.length > 1)
+  })
+
+  it('should correctly list the contents of a .tgz file', async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(tarGz)
+    const { list } = await unpacker.list()
+    assert.ok(list.length > 1)
+  })
+
+  it('should correctly list the contents of a .zip file', async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(tinyZip)
+    const { list } = await unpacker.list()
+    assert.ok(list.length > 1)
+  })
+
+  it('should correctly list the contents of a .gz file', async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(gz)
+    const { list } = await unpacker.list()
+    assert.ok(list.length === 1)
+  })
+})
+
 describe('successfully unpack some archives', () => {
   before(async () => {
     try {
