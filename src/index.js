@@ -378,19 +378,20 @@ export class Unpacker extends EventEmitter {
       throw new Error(`Archive is ${this._mimetype}, but can't find gzip executable.`)
     }
     let unpack
-    const excludes = '--exclude=__MACOSX* --exclude=._* --exclude=.git* --exclude=.svn* '
-    if (this._mimetype === TAR) {
-      unpack = `${this._tar.path} xf ${this._path}`
-    } else if (this._mimetype === GZIP) {
-      // check if file is a compressed tar file: .tar.gz or .tgz
-      if (this._isTarFile && this._isCompressed) {
-        unpack = `${this._tar.path} ${excludes} -xzf ${this._path}`
-      } else {
-        // file is probably a .gz or .zip
-        unpack = `${this._gzip.path} -d -S ${this._file.ext} ${this._path}`
-      }
-    } else if (this._mimetype === ZIP) {
-      unpack = `${this._unzip.path} ${this._path} -x __MACOSX*`
+    const tarExcludes = '--exclude=__MACOSX* --exclude=._* --exclude=.git* --exclude=.svn*'
+    if (this._isTarFile && !this._isCompressed) {
+      // TAR .tar
+      unpack = `${this._tar.path} ${tarExcludes} -xf ${this._path}`
+    } else if (this._isTarFile && this._isGzipFile) {
+      // Compressed TAR .tar.gz or .tgz
+      unpack = `${this._tar.path} ${tarExcludes} -xzf ${this._path}`
+    } else if (this._isGzipFile && this._isCompressed) {
+      // GZIP file is probably a .gz
+      unpack = `${this._gzip.path} --decompress --keep --suffix ${this._file.ext} ${this._path}`
+    } else if (this._isZipFile) {
+      // ZIP .zip
+      const zipExcludes = '-x \'__MACOSX*\''
+      unpack = `${this._unzip.path} ${this._path} ${zipExcludes}`
     } else {
       throw new Error(`Not an archive? ${this._path}`)
     }
@@ -402,32 +403,58 @@ export class Unpacker extends EventEmitter {
     destination = destination.replace(/(.*[^\/])$/, '$1/')
     try {
       debug(`unpack: ${unpack}`)
+      debug(`desintation: ${destination}`)
       result = await cmd(unpack)
       debug(result)
-      if (result.stderr !== '') {
+      if (result.stderr !== '' && result.stdout === '') {
         throw new Error(result.stderr)
-      }
-      this._file.name = this._file.name.replace(/\.tar$/, '')
-      tempDir = `${this._cwd}/${this._file.name}`
-      stats = await fs.stat(tempDir)
-      if (!stats.isDirectory()) {
-        result.unpacked = null
-        result.cwd = null
-      }
-      result.unpacked = true
-      result.cwd = tempDir
-      try {
-        const mv = `mv ${(options.force ? '-f' : '')} ${(options.backup === 'numbered' ? '--backup=numbered' : '')} ${tempDir} ${destination}`
-        const move = await cmd(mv)
-        result.destination = destination
-        debug(move)
-      } catch (e) {
-        const cause = new Error(`Error ocurred trying to move ${tempDir} to ${destination}`)
-        throw new Error(e, { cause })
       }
     } catch (e) {
       debug(e)
-      throw new Error(e)
+      const cause = e
+      throw new Error('Failed trying to move unpacked file(s)', { cause })
+    }
+    try {
+      // this._file.name = this._file.name.replace(/\.tar$/, '')
+      // tempDir = `${this._cwd}/${this._file.name}`
+      if (this._isTarFile || this._isZipFile) {
+        tempDir = `${this._cwd}/${this._fileBasename}`
+      } else {
+        // Gzip files extract into the directory they are in, not into
+        // the process.cwd context of the excuting script.
+        tempDir = `${this._file.dir}/${this._fileBasename}`
+      }
+      debug(`tempDir: ${tempDir}`)
+      stats = await fs.stat(tempDir)
+      if (stats.isDirectory()) {
+        result.unpacked = true
+        result.cwd = tempDir
+      } else if (stats.isFile()) {
+        // Gzipped single file extraction
+        result.unpacked = true
+        result.cwd = tempDir
+        // modify destination to include dir named after file basename
+        /* eslint-disable-next-line no-useless-escape */
+        destination += `${this._fileBasename.replace(/^(\w+?[^\.]*)((\.?)\w+)?$/, '$1')}/`
+        try {
+          const dir = await cmd(`mkdir -p ${destination}`)
+          debug(`mkdir -p ${dir}`)
+        } catch (e) {
+          throw new Error(`Failed to make destination directory: ${destination}`)
+        }
+      } else {
+        debug(`fail: ${tempDir}`)
+        result.unpacked = null
+        result.cwd = null
+      }
+      const mv = `mv ${(options.force ? '-f' : '')} ${(options.backup === 'numbered' ? '--backup=numbered' : '')} ${tempDir} ${destination}`
+      debug(`mv: ${mv}`)
+      const move = await cmd(mv)
+      result.destination = destination
+      debug(move)
+    } catch (e) {
+      const cause = new Error(`Error ocurred trying to move ${tempDir} to ${destination}`)
+      throw new Error(e, { cause })
     }
     try {
       await this.cleanup('__MACOSX')
@@ -543,10 +570,11 @@ export class Unpacker extends EventEmitter {
     debug(zipFile)
     const o = {}
     try {
-      const unzip = 'unzip -qql '
-      const excludes = '-x __MACOSX* -x ._*'
+      // const unzip = 'unzip -qql '
+      const unzip = 'unzip -Z -1 '
+      const excludes = '-x __MACOSX*'
       debug(`cmd: ${unzip} ${zipFile} ${excludes}`)
-      o.cmd = `${unzip} ${zipFile}`
+      o.cmd = `${unzip} ${zipFile} ${excludes}`
       const result = await cmd(`${unzip} ${zipFile} ${excludes}`)
       debug(result.stdout)
       const list = result.stdout.trim().split('\n').slice(1)

@@ -1,4 +1,4 @@
-import { describe, it, before, after, afterEach } from 'node:test'
+import { describe, it, before, after } from 'node:test'
 import assert from 'node:assert/strict'
 import path from 'node:path'
 import fs from 'node:fs/promises'
@@ -27,7 +27,7 @@ after('after tests, teardown', () => {
 
 })
 
-describe('Testing the creation and use of the Unpacker class.', () => {
+describe('Testing the creation and use of the Unpacker class.', { timeout: 5000 }, () => {
   it('should create an instance of Unpacker', async () => {
     debug('Unpacker constructor test')
     const unpacker = new Unpacker()
@@ -36,7 +36,7 @@ describe('Testing the creation and use of the Unpacker class.', () => {
   })
 })
 
-describe('setting the path', () => {
+describe('setting the path', { timeout: 5000 }, () => {
   it('should be able to set a valid file system path to an archive file', async () => {
     debug('getter/setter: path property')
     const unpacker = new Unpacker()
@@ -87,7 +87,7 @@ describe('setting the path', () => {
   })
 })
 
-describe('checking for tar and gzip', () => {
+describe('checking for tar and gzip', { timeout: 5000 }, () => {
   it('should find a usable version of tar', async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tarball)
@@ -110,7 +110,7 @@ describe('checking for tar and gzip', () => {
   })
 })
 
-describe('get the file extension of the archive file', async () => {
+describe('get the file extension of the archive file', { timeout: 5000 }, async () => {
   it('should correctly extract the file extension from a .tar file', async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tar)
@@ -147,7 +147,7 @@ describe('get the file extension of the archive file', async () => {
   })
 })
 
-describe('successfully list the contents of the archive file', async () => {
+describe('successfully list the contents of the archive file', { timeout: 5000 }, async () => {
   it('should correctly list the contents of a .tar file', async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tar)
@@ -184,7 +184,7 @@ describe('successfully list the contents of the archive file', async () => {
   })
 })
 
-describe('successfully unpack some archives', () => {
+describe('successfully unpack some archives', { timeout: 5000 }, () => {
   before(async () => {
     try {
       const result = await fs.stat(destination)
