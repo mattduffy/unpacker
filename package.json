@@ -24,6 +24,14 @@
   },
   "author": "Matthew Duffy",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mattduffy/unpacker"
+  },
+  "bugs": {
+    "url": "https://github.com/mattduffy/unpacker/issues"
+  },
+  "homepage": "https://github.com/mattduffy/unpacker#readme",
   "devDependencies": {
     "eslint": "8.26.0",
     "eslint-config-airbnb-base": "15.0.0",
