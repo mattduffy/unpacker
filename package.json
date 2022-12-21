@@ -2,17 +2,18 @@
   "name": "@mattduffy/unpacker",
   "version": "1.2.1",
   "description": "A simple object oriented wrapper for unpacking zip, gzip or tar archives.",
-  "keywords": [
-    "tar",
-    "gzip",
-    "zip",
-    "unpack",
-    "decompress",
-    "uncompress",
-    "archives"
-  ],
+  "author": "Matthew Duffy",
+  "license": "ISC",
   "main": "index.js",
   "type": "module",
+  "homepage": "https://github.com/mattduffy/unpacker#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mattduffy/unpacker"
+  },
+  "bugs": {
+    "url": "https://github.com/mattduffy/unpacker/issues"
+  },
   "exports": {
     "import": "./src/index.js",
     "package.json": "./package.json",
@@ -22,16 +23,6 @@
   "scripts": {
     "test": "DEBUG=unpacker:* node --test test/"
   },
-  "author": "Matthew Duffy",
-  "license": "ISC",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/mattduffy/unpacker"
-  },
-  "bugs": {
-    "url": "https://github.com/mattduffy/unpacker/issues"
-  },
-  "homepage": "https://github.com/mattduffy/unpacker#readme",
   "devDependencies": {
     "eslint": "8.26.0",
     "eslint-config-airbnb-base": "15.0.0",
@@ -39,5 +30,14 @@
   },
   "dependencies": {
     "debug": "4.3.4"
-  }
+  },
+  "keywords": [
+    "tar",
+    "gzip",
+    "zip",
+    "unpack",
+    "decompress",
+    "uncompress",
+    "archives"
+  ]
 }
