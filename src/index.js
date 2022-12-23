@@ -436,21 +436,6 @@ export class Unpacker extends EventEmitter {
         /* eslint-disable-next-line no-useless-escape */
         destination += `${this._fileBasename.replace(/^(\w+?[^\.]*)((\.?)\w+)?$/, '$1')}/`
       }
-      //   try {
-      //     const dir = await cmd(`mkdir -v -p ${destination}`)
-      //     debug(`mkdir -p ${dir}`)
-      //   } catch (e) {
-      //     throw new Error(`Failed to make destination directory: ${destination}`)
-      //   }
-      // } else {
-      //   debug(`fail: ${tempDir}`)
-      //   result.unpacked = null
-      //   result.cwd = null
-      // }
-      // const mv = `mv ${(options.force ? '-f' : '')} ${(options.backup === 'numbered' ? '--backup=numbered' : '')} ${tempDir} ${destination}`
-      // debug(`mv: ${mv}`)
-      // const move = await cmd(mv)
-      // const move = await this.mv(tempDir, destination, options)
       const move = await this.mv(tempDir, destination, options)
       result.destination = destination
       debug(move)

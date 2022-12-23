@@ -196,12 +196,26 @@ describe('successfully unpack some archives', { timeout: 5000 }, () => {
     }
   })
 
+  after(async () => {
+    if (process.platform === 'darwin') {
+      await cmd(`rm -rf ${destination}/*`)
+    }
+  })
+
   it('should unpack and move a .tar.gz file', async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tarGz)
     const result = await unpacker.unpack(destination)
     debug(`destination: ${destination}`)
     debug(`result.destination: ${result.destination}`)
+    const re = new RegExp(`${destination}`)
+    assert.match(result.destination, re)
+  })
+
+  it('should unpack and move a single gunzipped file', async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(gz)
+    const result = await unpacker.unpack(destination)
     const re = new RegExp(`${destination}`)
     assert.match(result.destination, re)
   })

@@ -33,3 +33,5 @@
 - [x] list: class proxy method to list contents of the archive - tar t / unzip -l / gunzip -l
 - [x] - create a unit test to list entries in a .tar archive
 - [x] - create a unit test to list entires in a compressed .t[ar\.]gz archive
+- [x] mv: class method to encapsulate the code or moving files.
+- [x] - create a unit test to verify moving files
