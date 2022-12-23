@@ -368,6 +368,7 @@ export class Unpacker extends EventEmitter {
   async unpack(moveTo, opts) {
     let destination = moveTo || '.'
     const options = { force: true, backup: 'numbered', ...opts }
+    debug(`process.platform: ${process.platform}`)
     if (process.platform === 'darwin') {
       options.backup = false
     }
@@ -403,7 +404,7 @@ export class Unpacker extends EventEmitter {
     destination = destination.replace(/(.*[^\/])$/, '$1/')
     try {
       debug(`unpack: ${unpack}`)
-      debug(`desintation: ${destination}`)
+      debug(`destination: ${destination}`)
       result = await cmd(unpack)
       debug(result)
       if (result.stderr !== '' && result.stdout === '') {
@@ -415,8 +416,6 @@ export class Unpacker extends EventEmitter {
       throw new Error('Failed trying to move unpacked file(s)', { cause })
     }
     try {
-      // this._file.name = this._file.name.replace(/\.tar$/, '')
-      // tempDir = `${this._cwd}/${this._file.name}`
       if (this._isTarFile || this._isZipFile) {
         tempDir = `${this._cwd}/${this._fileBasename}`
       } else {
@@ -436,20 +435,23 @@ export class Unpacker extends EventEmitter {
         // modify destination to include dir named after file basename
         /* eslint-disable-next-line no-useless-escape */
         destination += `${this._fileBasename.replace(/^(\w+?[^\.]*)((\.?)\w+)?$/, '$1')}/`
-        try {
-          const dir = await cmd(`mkdir -p ${destination}`)
-          debug(`mkdir -p ${dir}`)
-        } catch (e) {
-          throw new Error(`Failed to make destination directory: ${destination}`)
-        }
-      } else {
-        debug(`fail: ${tempDir}`)
-        result.unpacked = null
-        result.cwd = null
       }
-      const mv = `mv ${(options.force ? '-f' : '')} ${(options.backup === 'numbered' ? '--backup=numbered' : '')} ${tempDir} ${destination}`
-      debug(`mv: ${mv}`)
-      const move = await cmd(mv)
+      //   try {
+      //     const dir = await cmd(`mkdir -v -p ${destination}`)
+      //     debug(`mkdir -p ${dir}`)
+      //   } catch (e) {
+      //     throw new Error(`Failed to make destination directory: ${destination}`)
+      //   }
+      // } else {
+      //   debug(`fail: ${tempDir}`)
+      //   result.unpacked = null
+      //   result.cwd = null
+      // }
+      // const mv = `mv ${(options.force ? '-f' : '')} ${(options.backup === 'numbered' ? '--backup=numbered' : '')} ${tempDir} ${destination}`
+      // debug(`mv: ${mv}`)
+      // const move = await cmd(mv)
+      // const move = await this.mv(tempDir, destination, options)
+      const move = await this.mv(tempDir, destination, options)
       result.destination = destination
       debug(move)
     } catch (e) {
@@ -463,6 +465,61 @@ export class Unpacker extends EventEmitter {
       debug(e)
     }
     return result
+  }
+
+  /**
+   * Move the newly unpacked contents of the archive file to the given destination.
+   * @summary Move the newly unpacked contents of the archive to the given destination.
+   * @author Matthew Duffy <mattdufy@gmail.com>
+   * @async
+   * @param { string } source - The directory to move.
+   * @param { string } destination - The file system location to move the archive contents.
+   * @param { object } opttions - Object literal with options or mv command.
+   * @throws { Error } Throws an error if the contents cannot be moved.
+   * @return { Boolean } True if move is successul.
+   */
+  async mv(source, destination, options = null) {
+    if (!source) throw new Error('Missing source argument')
+    if (!destination) throw new Error('Missing destination argument')
+    const opts = { makeDir: true, ...options }
+    debug('opts: %o', opts)
+    debug(`${source} ${destination}`)
+    try {
+      const sourceStats = await fs.stat(source)
+      debug(`isDir: ${sourceStats.isDirectory()}`)
+    } catch (e) {
+      throw new Error(`Source missing directory: ${source}`)
+    }
+    let destinationDoesntExist = true
+    let destinationStats
+    try {
+      destinationStats = await fs.stat(destination)
+    } catch (e) {
+      destinationDoesntExist = false
+      const mkdir = `mkdir -v -p ${destination}`
+      debug(`mkdir: ${mkdir}`)
+      const result = await cmd(mkdir)
+      if (result.stderr.trim() !== '') {
+        throw new Error(`Failed to make dir: ${destination}`)
+      }
+    }
+    try {
+      destinationStats = await fs.stat(destination)
+      if (destinationStats.isDirectory() && !opts.force) {
+        throw new Error(`Destination already exists, no over-writing:  ${destination}`)
+      }
+      const mv = `mv ${(opts.force ? '-f' : '')} ${(opts.backup === 'numbered' ? '--backup=numbered' : '')} ${source} ${destination}`
+      debug(`mv: ${mv}`)
+      const result = await cmd(mv)
+      debug(result)
+      if (result.stderr !== '') {
+        throw new Error(`Move failed. source: ${source} destination: ${destination}`)
+      }
+    } catch (e) {
+      const cause = new Error(e.message)
+      throw new Error('Move failed. Cause: ', { cause })
+    }
+    return true
   }
 
   /**
