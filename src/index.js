@@ -1,7 +1,7 @@
 /**
  * @module @mattduffy/unpacker
  * @author Matthew Duffy <mattduffy@gmail.com>
- * @file index.js The Unpacker class definition file.
+ * @file src/index.js The Unpacker class definition file.
  */
 import nodePath from 'node:path'
 import { fileURLToPath } from 'node:url'
