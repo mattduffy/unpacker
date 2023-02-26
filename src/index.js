@@ -35,7 +35,7 @@ export class Unpacker extends EventEmitter {
    */
   constructor(pathToArchiveFile) {
     super()
-    this._path = pathToArchiveFile || null
+    this._path = pathToArchiveFile ?? null
     this._file = null
     this._fileBasename = null
     this._fileExt = null
@@ -366,7 +366,7 @@ export class Unpacker extends EventEmitter {
    * @return { Object } An object literal with success or error messages.
    */
   async unpack(moveTo, opts) {
-    let destination = moveTo || '.'
+    let destination = moveTo ?? '.'
     const options = { force: true, backup: 'numbered', ...opts }
     debug(`process.platform: ${process.platform}`)
     if (process.platform === 'darwin') {
