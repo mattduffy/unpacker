@@ -18,6 +18,7 @@ const tarGz = `${__dirname}/test/marquetry.tar.gz`
 const tarball = `${__dirname}/test/marquetry.tgz`
 const badPath = `${__dirname}/test/missingfile.tar.gz`
 const destination = `${__dirname}/test/static/albums`
+const renamedDest = '0000000001'
 
 before('before tests, setup', () => {
   debug('before tests, setup')
@@ -225,6 +226,14 @@ describe('successfully unpack some archives', { timeout: 5000 }, () => {
     await unpacker.setPath(tinyZip)
     const re = new RegExp(`${destination}`)
     const result = await unpacker.unpack(destination)
+    assert.match(result.destination, re)
+  })
+
+  it('rename the final destination directory of the unpacked archive.', async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(tarball)
+    const re = new RegExp(`${renamedDest}`)
+    const result = await unpacker.unpack(destination, {}, { rename: true, newName: renamedDest })
     assert.match(result.destination, re)
   })
 })

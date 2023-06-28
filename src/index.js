@@ -361,11 +361,14 @@ export class Unpacker extends EventEmitter {
    * @author Matthew Duffy <mattduffy@gmail.com>
    * @async
    * @param { string } moveTo - A file system location to move the unpacked archive to.
-   * @param { object } options - An object literal with options for mv command.
+   * @param { Object } opts - An object literal with options for mv command.
+   * @param { Object } rename - An object literal with new name for destination directory.
+   * @param { boolean } rename.rename - Should the destination directory be renamed.
+   * @param { string } rename.newName - Destination renamed to this.
    * @throws { Error } Throws an error if the archive could not be unpacked.
    * @return { Object } An object literal with success or error messages.
    */
-  async unpack(moveTo, opts) {
+  async unpack(moveTo, opts, rename) {
     let destination = moveTo ?? '.'
     const options = { force: true, backup: 'numbered', ...opts }
     debug(`process.platform: ${process.platform}`)
@@ -449,6 +452,22 @@ export class Unpacker extends EventEmitter {
     } catch (e) {
       debug(e)
     }
+    if (rename?.rename) {
+      try {
+        const fullDestination = `${destination}${(tempDir.split('/').splice(-1, 1))[0]}`
+        const splitDestination = destination.split('/')
+        splitDestination.splice(-1, 1, rename.newName)
+        const renamedDestination = splitDestination.join('/')
+        const renamed = await fs.rename(fullDestination, renamedDestination)
+        debug(`renamed destination: ${(renamed === undefined)}`)
+        this._destination = renamedDestination
+        result.destination = renamedDestination
+        debug(this._destination)
+      } catch (e) {
+        debug(e)
+        throw new Error(e)
+      }
+    }
     return result
   }
 
@@ -459,9 +478,10 @@ export class Unpacker extends EventEmitter {
    * @async
    * @param { string } source - The directory to move.
    * @param { string } destination - The file system location to move the archive contents.
-   * @param { object } opttions - Object literal with options or mv command.
+   * @param { Object } options - Object literal with options for mv command.
+   * @param { boolean } options.makeDir - Boolean controlling if parent dirs need to be created.
    * @throws { Error } Throws an error if the contents cannot be moved.
-   * @return { Boolean } True if move is successul.
+   * @return { boolean } True if move is successful.
    */
   async mv(source, destination, options = null) {
     if (!source) throw new Error('Missing source argument')
@@ -482,6 +502,7 @@ export class Unpacker extends EventEmitter {
     } catch (e) {
       destinationDoesntExist = false
       const mkdir = `mkdir -v -p ${destination}`
+      debug(`destinationDoesntExist: ${destinationDoesntExist}`)
       debug(`mkdir: ${mkdir}`)
       const result = await cmd(mkdir)
       if (result.stderr.trim() !== '') {
@@ -504,6 +525,7 @@ export class Unpacker extends EventEmitter {
       const cause = new Error(e.message)
       throw new Error('Move failed. Cause: ', { cause })
     }
+    this._destination = destination
     return true
   }
 
@@ -514,7 +536,7 @@ export class Unpacker extends EventEmitter {
    * @async
    * @param { string } tarFile - A string containing the name of the Tar file.
    * @throws { Error } Throws an error if the contents of the Tar file cannont be listed.
-   * @return { Object } An object literal with an array of file names.
+   * @return { Object[] } An object literal with an array of file names.
    */
   async list(file = this._path) {
     let list
@@ -544,7 +566,7 @@ export class Unpacker extends EventEmitter {
    * @async
    * @param { string } tarFile - A string containing the name of the Tar file.
    * @throws { Error } Throws an error if the contents of the Tar file cannot be listed.
-   * @return { Object } An object literal with an array of the file names.
+   * @return { Object[] } An object literal with an array of the file names.
    */
   async tar_t(tarFile = this._path) {
     debug(tarFile)
@@ -606,7 +628,7 @@ export class Unpacker extends EventEmitter {
    * @async
    * @param { string } zipFile - A string containing the name of the Zip file.
    * @throws { Error } Throws an errof if the contents of the Zip file cannot be listed.
-   * @return { Object } An object literal with an array of the file names.
+   * @return { Object[] } An object literal with an array of the file names.
    */
   async unzip_l(zipFile = this._path) {
     debug(zipFile)

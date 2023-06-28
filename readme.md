@@ -66,6 +66,22 @@ console.log(result)
 // }
 ```
 
+The ```unpack()``` method also accepts two additional optional parameters.  The first optional parameter is for controlling how the underlying ```mv``` command works.  The default behavior is to tell the ```mv``` command to force a move, and automatically create a backup of an existing directory.  If you don't mind overwritting an existing directory, you can set the prperty ```backup: ''```.  The second optional parameter lets you change the destination directory name after it has been moved.
+```javascript
+// default mv command options { force: true, backup: 'numbered'}
+const unpacker = new Unpacker()
+await unpacker.setPath('uploads/myPhotos.tar.gz')
+const result = await unpacker.unpack('static/albums', {force: true, backup: ''}, {rename: true, newName: 'The_Latest_Photos'})
+console.log(result)
+// {
+//   stdout: '',
+//   stderr: '',
+//   unpacked: true,
+//   cwd: '/www/app/uploads/myPhotos',
+//   destination: '/www/app/static/albums/'
+// }
+```
+
 Unpacker provides a way to peek inside the archive file without having to extract the contents to the file system using the ```list()``` method.  After the ```setPath()``` method has been called, setting the location of the archive file, this method will return an object containing an array of file names and the native command of the archive binary used.  This is an **Async/Await** method.
 ```javascript
 const unpacker = new Unpacker()
