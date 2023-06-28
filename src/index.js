@@ -69,7 +69,7 @@ export class Unpacker extends EventEmitter {
    * @async
    * @param { string } filePath - String value of a file system path to the archive.
    * @throws { Error } Throws an error if the file path is invalid.
-   * @return { undefind|Error } Throws an error if path argument is not provided or if path is not valid.
+   * @return { undefind } Returns undefined if no errors encountered.
    */
   async setPath(filePath) {
     if (!filePath) {
@@ -138,7 +138,7 @@ export class Unpacker extends EventEmitter {
    * @async
    * @param { string } file - A file sytem path to the file.
    * @throws { Error } Throws an error if the file path is invalid.
-   * @return { undefined }
+   * @return { undefined } Returns undefined if no error is encountered.
    */
   async setMimetype(file) {
     try {
@@ -165,6 +165,7 @@ export class Unpacker extends EventEmitter {
     } catch (e) {
       throw new Error(`File not found: ${file}`)
     }
+    return undefined
   }
 
   /**
@@ -173,7 +174,7 @@ export class Unpacker extends EventEmitter {
    * @author Matthew Duffy <mattduffy@gmail.com>
    * @param { string } file - A file system path to the file.
    * @throws { Error } Throws an errof if the file path is invalid.
-   * @returns { undefined }
+   * @returns { undefined } Returns undefined if no error is encountered.
    */
   setExtension(file = this._file) {
     const ext = /\.*(\.(t(ar)?(\.?gz)?)|(zip)?|(gz)?)$/.exec(file)
@@ -247,7 +248,7 @@ export class Unpacker extends EventEmitter {
    * @author Matthew Duffy <mattduffy@gmail.com>
    * @async
    * @thows { Error } Throws an error if search for tar fails.
-   * @return { undefined }
+   * @return { undefined } Returns undefined if no error is encountered.
    */
   async whichTar() {
     const tar = { path: null, version: null }
@@ -278,7 +279,7 @@ export class Unpacker extends EventEmitter {
    * @author Matthew Duffy <mattduffy@gmail.com>
    * @async
    * @thows { Error } Throws an error if search for gzip fails.
-   * @return { undefined }
+   * @return { undefined } Returns undefined if no error is encountered.
    */
   async whichGzip() {
     const gzip = { path: null, version: null }
@@ -309,7 +310,7 @@ export class Unpacker extends EventEmitter {
    * @author Matthew Duffy <mattduffy@gmail.com>
    * @async
    * @throws { Error } Throws an error if search for unzip fails.
-   * @returns { undefined }
+   * @returns { undefined } Returns undefined if no error is encountered.
    */
   async whichUnzip() {
     const unzip = { path: null, version: null }
