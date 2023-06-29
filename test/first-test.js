@@ -18,7 +18,7 @@ const tarGz = `${__dirname}/test/marquetry.tar.gz`
 const tarball = `${__dirname}/test/marquetry.tgz`
 const badPath = `${__dirname}/test/missingfile.tar.gz`
 const destination = `${__dirname}/test/static/albums`
-const renamedDest = '0000000001'
+const renamedDest = '_0000000001'
 
 before('before tests, setup', () => {
   debug('before tests, setup')

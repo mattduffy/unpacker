@@ -50,6 +50,7 @@ export class Unpacker extends EventEmitter {
     this._unzip = null
     this._cwd = process.cwd()
     this.__dirname = __dirname
+    this._platform = process.platform
   }
 
   /**
@@ -363,6 +364,7 @@ export class Unpacker extends EventEmitter {
    * @async
    * @param { string } moveTo - A file system location to move the unpacked archive to.
    * @param { Object } opts - An object literal with options for mv command.
+   * @param { string } opts.backup - Tell mv command whether or not to backup existing destination path, if supported.
    * @param { Object } rename - An object literal with new name for destination directory.
    * @param { boolean } rename.rename - Should the destination directory be renamed.
    * @param { string } rename.newName - Destination renamed to this.
@@ -372,8 +374,8 @@ export class Unpacker extends EventEmitter {
   async unpack(moveTo, opts, rename) {
     let destination = moveTo ?? '.'
     const options = { force: true, backup: 'numbered', ...opts }
-    debug(`process.platform: ${process.platform}`)
-    if (process.platform === 'darwin') {
+    debug(`process.platform: ${this._platform}`)
+    if (this._platform === 'darwin') {
       options.backup = false
     }
     if (this._tar === null && this._mimetype === TAR) {
@@ -402,7 +404,7 @@ export class Unpacker extends EventEmitter {
     }
     let result
     let stats
-    let tempDir
+    // let tempDir
     destination = nodePath.resolve(destination)
     /* eslint-disable-next-line no-useless-escape */
     destination = destination.replace(/(.*[^\/])$/, '$1/')
@@ -421,30 +423,30 @@ export class Unpacker extends EventEmitter {
     }
     try {
       if (this._isTarFile || this._isZipFile) {
-        tempDir = `${this._cwd}/${this._fileBasename}`
+        this._tempDir = `${this._cwd}/${this._fileBasename}`
       } else {
         // Gzip files extract into the directory they are in, not into
         // the process.cwd context of the excuting script.
-        tempDir = `${this._file.dir}/${this._fileBasename}`
+        this._tempDir = `${this._file.dir}/${this._fileBasename}`
       }
-      debug(`tempDir: ${tempDir}`)
-      stats = await fs.stat(tempDir)
+      debug(`tempDir: ${this._tempDir}`)
+      stats = await fs.stat(this._tempDir)
       if (stats.isDirectory()) {
         result.unpacked = true
-        result.cwd = tempDir
+        result.cwd = this._tempDir
       } else if (stats.isFile()) {
         // Gzipped single file extraction
         result.unpacked = true
-        result.cwd = tempDir
+        result.cwd = this._tempDir
         // modify destination to include dir named after file basename
         /* eslint-disable-next-line no-useless-escape */
         destination += `${this._fileBasename.replace(/^(\w+?[^\.]*)((\.?)\w+)?$/, '$1')}/`
       }
-      const move = await this.mv(tempDir, destination, options)
+      const move = await this.mv(this._tempDir, destination, options)
       result.destination = destination
       debug(move)
     } catch (e) {
-      const cause = new Error(`Error ocurred trying to move ${tempDir} to ${destination}`)
+      const cause = new Error(`Error ocurred trying to move ${this._tempDir} to ${destination}`)
       throw new Error(e, { cause })
     }
     try {
@@ -455,19 +457,56 @@ export class Unpacker extends EventEmitter {
     }
     if (rename?.rename) {
       try {
-        const fullDestination = `${destination}${(tempDir.split('/').splice(-1, 1))[0]}`
-        const splitDestination = destination.split('/')
-        splitDestination.splice(-1, 1, rename.newName)
-        const renamedDestination = splitDestination.join('/')
-        const renamed = await fs.rename(fullDestination, renamedDestination)
-        debug(`renamed destination: ${(renamed === undefined)}`)
-        this._destination = renamedDestination
-        result.destination = renamedDestination
+        const renamed = await this.rename(this._destination, rename.newName)
+        result.destination = renamed.destination
+        result.command = renamed.command
         debug(this._destination)
       } catch (e) {
         debug(e)
         throw new Error(e)
       }
+    }
+    return result
+  }
+
+  /*
+   * Rename an existing directory to a new name.
+   * @summary Rename an existing directory to a new name.
+   * @async
+   * @param { string } oldPath - The original name.
+   * @param { string } newPath - the new name to be used.
+   * @param { Object } options - Object literal with command line options for the mv command.
+   * @param { boolean } options.force - Whether to cause mv command to overwrite an existing destination path.
+   * @param { string } optsions.backup - Tell mv command whether or not to backup existing destination path, if supported.
+   * @throw { Error }
+   * @return { boolean } True if rename operation was successful.
+   */
+  async rename(oldPath, newPath, options = null) {
+    if (!oldPath) throw new Error('Missing source argument')
+    if (!newPath) throw new Error('Missing destination argument')
+    const opts = { force: true, backup: 'numbered', ...options }
+    if (this._platform === 'darwin') {
+      opts.backup = false
+    }
+    debug('rename opts: %o', opts)
+    debug(`${oldPath} ${newPath}`)
+    debug('pre-rename this._destination: ', this._destination)
+    let result
+    try {
+      const fullDestination = `${oldPath}${(this._tempDir.split('/').splice(-1, 1))[0]}`
+      const splitDestination = oldPath.split('/')
+      splitDestination.splice(-1, 1, newPath)
+      const renamedDestination = splitDestination.join('/')
+      const mv = `mv ${(opts.force ? '-f' : '')} ${(opts.backup === 'numbered' ? '--backup=numbered' : '')} ${fullDestination} ${renamedDestination}`
+      debug(`mv: ${mv}`)
+      result = await cmd(mv)
+      result.command = mv
+      result.destination = renamedDestination
+      debug('renamed destination: ', result)
+      this._destination = renamedDestination
+    } catch (e) {
+      debug(e)
+      throw new Error(e)
     }
     return result
   }
