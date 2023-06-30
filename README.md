@@ -89,7 +89,7 @@ await unpacker.setPath('uploads/files.tar.gz')
 const { list } = await unpacker.list()
 console.log(list)
 // {
-//  cmd: 'tar --exclude=__MACOSX --exclude=._* --exclude=.svn --exclude=.git* -tf /home/matt/node_package_development/unpacker/tmp/files.tar',
+//  cmd: 'tar --exclude=__MACOSX --exclude=._* --exclude=.svn --exclude=.git* -tf /www/site/uploads/files.tar',
 //  list: [
 //    'files/',
 //    'files/file-2.txt',
