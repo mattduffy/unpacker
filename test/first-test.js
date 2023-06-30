@@ -199,8 +199,7 @@ describe('successfully unpack some archives', { timeout: 5000 }, () => {
   })
 
   after(async () => {
-    // if (process.platform === 'darwin') {
-    if (process.platform === 'nothing') {
+    if (process.platform === 'darwin') {
       const rm = `rm -rf ${destination}/*`
       debug(rm)
       await cmd(rm)
