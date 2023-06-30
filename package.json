@@ -1,6 +1,6 @@
 {
   "name": "@mattduffy/unpacker",
-  "version": "1.3.4",
+  "version": "1.3.5",
   "description": "A simple object oriented wrapper for unpacking zip, gzip or tar archives.",
   "author": "Matthew Duffy",
   "license": "ISC",
