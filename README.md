@@ -88,12 +88,15 @@ const unpacker = new Unpacker()
 await unpacker.setPath('uploads/files.tar.gz')
 const { list } = await unpacker.list()
 console.log(list)
-// list: [
-//   'files/',
-//   'files/file-2.txt',
-//   'files/file-1.txt',
-//   'files/file-3.txt'
-// ]
+// {
+//  cmd: 'tar --exclude=__MACOSX --exclude=._* --exclude=.svn --exclude=.git* -tf /home/matt/node_package_development/unpacker/tmp/files.tar',
+//  list: [
+//    'files/',
+//    'files/file-2.txt',
+//    'files/file-1.txt',
+//    'files/file-3.txt'
+//  ]
+// }
 ```
 
 If there are problems with the unpacking process, the method will throw an error.  Upon successful unpacking and moving files to the target destination, the Unpacker instance will make an effort to clean up the weird artifacts that may have been created (like "dot" hidden resource folders ```.myPhotos``` or \__MACOSX ).
