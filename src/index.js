@@ -428,11 +428,13 @@ export class Unpacker extends EventEmitter {
       unpack = `${this._tar.path} ${tarExcludes} -xzf ${this._path}`
     } else if (this._isGzipFile && this._isCompressed) {
       // GZIP file is probably a .gz
-      unpack = `${this._gzip.path} --decompress --keep --suffix ${this._file.ext} ${this._path}`
+      // unpack = `${this._gzip.path} --decompress --keep --suffix ${this._file.ext} ${this._path}`
+      unpack = `${this._gzip.path} --decompress --force --keep --suffix ${this._file.ext} ${this._path}`
     } else if (this._isZipFile) {
       // ZIP .zip
       const zipExcludes = '-x \'__MACOSX*\''
-      unpack = `${this._unzip.path} ${this._path} ${zipExcludes}`
+      // unpack = `${this._unzip.path} ${this._path} ${zipExcludes}`
+      unpack = `${this._unzip.path} -o ${this._path} ${zipExcludes}`
     } else {
       throw new Error(`Not an archive? ${this._path}`)
     }
@@ -508,6 +510,7 @@ export class Unpacker extends EventEmitter {
     } catch (e) {
       error(e)
     }
+    result.command = unpack
     log(`_destination: ${this._destination}`)
     log('final unpack results: ', result)
     return result
@@ -544,7 +547,7 @@ export class Unpacker extends EventEmitter {
       const splitDestination = oldPath.split('/')
       splitDestination.splice(-1, 1, newPath)
       const renamedDestination = splitDestination.join('/')
-      const mv = `mv ${(opts.force ? '-f' : '')}${(opts.backup === 'numbered' ? '--backup=numbered ' : ' ')}${fullDestination} ${renamedDestination}`
+      const mv = `mv ${(opts.force ? '-f' : '')} ${(opts.backup === 'numbered' ? '--backup=numbered' : '')} ${fullDestination} ${renamedDestination}`
       log(`mv: ${mv}`)
       result = await cmd(mv)
       result.command = mv
@@ -607,7 +610,7 @@ export class Unpacker extends EventEmitter {
         error(`Destination already exists, no over-writing:  ${destination}`)
         throw new Error(`Destination already exists, no over-writing:  ${destination}`)
       }
-      const mv = `mv ${(opts.force ? '-f' : ' ')}${(opts.backup === 'numbered' ? '--backup=numbered' : ' ')}${source} ${destination}`
+      const mv = `mv ${(opts.force ? '-f' : '')} ${(opts.backup === 'numbered' ? '--backup=numbered' : '')} ${source} ${destination}`
       log(`mv: ${mv}`)
       const result = await cmd(mv)
       log(result)
