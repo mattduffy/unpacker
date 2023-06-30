@@ -195,12 +195,17 @@ describe('successfully unpack some archives', { timeout: 5000 }, () => {
     } catch (e) {
       debug(`Missing the test destination dir: ${destination}`)
     }
+    debug('end of before method.')
   })
 
   after(async () => {
-    if (process.platform === 'darwin') {
-      await cmd(`rm -rf ${destination}/*`)
+    // if (process.platform === 'darwin') {
+    if (process.platform === 'nothing') {
+      const rm = `rm -rf ${destination}/*`
+      debug(rm)
+      await cmd(rm)
     }
+    debug('end of after method.')
   })
 
   it('should unpack and move a .tar.gz file', async () => {
@@ -234,6 +239,6 @@ describe('successfully unpack some archives', { timeout: 5000 }, () => {
     await unpacker.setPath(tarball)
     const re = new RegExp(`${renamedDest}`)
     const result = await unpacker.unpack(destination, {}, { rename: true, newName: renamedDest })
-    assert.match(result.destination, re)
+    assert.match(result.finalPath, re)
   })
 })

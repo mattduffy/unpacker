@@ -14,7 +14,8 @@ import Debug from 'debug'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = nodePath.dirname(__filename)
 const cmd = promisify(exec)
-const debug = Debug('unpacker:class')
+const _log = Debug('unpacker:class:LOG')
+const _error = Debug('unpacker:class:ERROR')
 const TAR = 'application/x-tar'
 const ZIP = 'application/zip'
 const GZIP = 'application/gzip'
@@ -73,6 +74,8 @@ export class Unpacker extends EventEmitter {
    * @return { undefind } Returns undefined if no errors encountered.
    */
   async setPath(filePath) {
+    const log = _log.extend('setPath')
+    const error = _error.extend('setPath')
     if (!filePath) {
       throw new Error('Missing required path argument.')
     }
@@ -88,6 +91,7 @@ export class Unpacker extends EventEmitter {
         await this.whichGzip()
       }
     } catch (e) {
+      error(e)
       throw new Error('Failed to find gzip.')
     }
     try {
@@ -95,6 +99,7 @@ export class Unpacker extends EventEmitter {
         await this.whichUnzip()
       }
     } catch (e) {
+      error(e)
       throw new Error('Failed to find unzip.')
     }
     try {
@@ -107,18 +112,22 @@ export class Unpacker extends EventEmitter {
         this._file = nodePath.parse(this._path)
       }
     } catch (e) {
+      error(e)
       throw new Error(`Not a valid file path: ${filePath}`)
     }
     try {
       this.setExtension(filePath)
     } catch (e) {
+      error(e)
       throw new Error(`File extension problem: ${filePath}`)
     }
     try {
       this.setFileBasename(filePath)
     } catch (e) {
+      error(e)
       throw new Error(`File basename problem: ${filePath}`)
     }
+    log(`setPath: ${this._path}`)
     return undefined
   }
 
@@ -142,11 +151,13 @@ export class Unpacker extends EventEmitter {
    * @return { undefined } Returns undefined if no error is encountered.
    */
   async setMimetype(file) {
+    const log = _log.extend('setMimetype')
+    const error = _error.extend('setMimetype')
     try {
       const result = await cmd(`file --mime-type --brief '${file}'`)
       const mime = result.stdout.trim()
-      debug(result)
-      debug(`${file}: ${mime}`)
+      log(result)
+      log(`${file}: ${mime}`)
       switch (result.stdout.trim()) {
         case TAR:
           this._mimetype = TAR
@@ -164,6 +175,7 @@ export class Unpacker extends EventEmitter {
           this._mimetype = OCTET
       }
     } catch (e) {
+      error(e)
       throw new Error(`File not found: ${file}`)
     }
     return undefined
@@ -178,11 +190,14 @@ export class Unpacker extends EventEmitter {
    * @returns { undefined } Returns undefined if no error is encountered.
    */
   setExtension(file = this._file) {
+    const log = _log.extend('setExtension')
+    const error = _error.extend('setExtension')
     const ext = /\.*(\.(t(ar)?(\.?gz)?)|(zip)?|(gz)?)$/.exec(file)
     if (ext === null) {
+      error(`${file} does not look like an compressed archive file.`)
       throw new Error(`File ${file} does not look like a (compressed) archive file.`)
     }
-    debug(`file extension: ${ext[0]}`)
+    log(`file extension: ${ext[0]}`)
     if (this._mimetype === ZIP) {
       this._isCompressed = true
       this._isZipFile = true
@@ -252,6 +267,8 @@ export class Unpacker extends EventEmitter {
    * @return { undefined } Returns undefined if no error is encountered.
    */
   async whichTar() {
+    const log = _log.extend('whichTar')
+    const error = _error.extend('whichTar')
     const tar = { path: null, version: null }
     try {
       let path = await cmd('which tar')
@@ -262,6 +279,7 @@ export class Unpacker extends EventEmitter {
       }
       tar.path = path
     } catch (e) {
+      error(e)
       throw new Error(e)
     }
     try {
@@ -269,9 +287,11 @@ export class Unpacker extends EventEmitter {
       const version = await cmd(`${tar.path} --version | awk '/([0-9]\.[0-9]+)$/ { print $NF}'`)
       tar.version = version.stdout.trim()
     } catch (e) {
+      error(e)
       throw new Error(e)
     }
     this._tar = tar
+    log(`which tar -> ${this._tar.path}`)
   }
 
   /**
@@ -283,6 +303,8 @@ export class Unpacker extends EventEmitter {
    * @return { undefined } Returns undefined if no error is encountered.
    */
   async whichGzip() {
+    const log = _log.extend('whichGzip')
+    const error = _error.extend('whichGzip')
     const gzip = { path: null, version: null }
     try {
       let path = await cmd('which gzip')
@@ -293,6 +315,7 @@ export class Unpacker extends EventEmitter {
       }
       gzip.path = path
     } catch (e) {
+      error(e)
       throw new Error(e)
     }
     try {
@@ -300,9 +323,11 @@ export class Unpacker extends EventEmitter {
       const version = await cmd(`${gzip.path} --version | awk '/([0-9]+\.[0-9]+)$/ { print $NF }'`)
       gzip.version = version.stdout.trim()
     } catch (e) {
+      error(e)
       throw new Error(e)
     }
     this._gzip = gzip
+    log(`which gzip -> ${this._gzip.path}`)
   }
 
   /**
@@ -314,6 +339,8 @@ export class Unpacker extends EventEmitter {
    * @returns { undefined } Returns undefined if no error is encountered.
    */
   async whichUnzip() {
+    const log = _log.extend('whichUnzip')
+    const error = _error.extend('whichUnzip')
     const unzip = { path: null, version: null }
     try {
       let path = await cmd('which unzip')
@@ -324,6 +351,7 @@ export class Unpacker extends EventEmitter {
       }
       unzip.path = path
     } catch (e) {
+      error(e)
       throw new Error(e)
     }
     try {
@@ -331,9 +359,11 @@ export class Unpacker extends EventEmitter {
       const version = await cmd(`${unzip.path} -v | awk '/^[Uu]n[Zz]ip ([0-9]+\.[0-9]+)/ { print $2 }'`)
       unzip.version = version.stdout.trim()
     } catch (e) {
+      error(e)
       throw new Error(e)
     }
     this._unzip = unzip
+    log(`which unzip -> ${this._unzip.path}`)
   }
 
   /**
@@ -372,9 +402,11 @@ export class Unpacker extends EventEmitter {
    * @return { Object } An object literal with success or error messages.
    */
   async unpack(moveTo, opts, rename) {
+    const log = _log.extend('unpack')
+    const error = _error.extend('unpack')
     let destination = moveTo ?? '.'
     const options = { force: true, backup: 'numbered', ...opts }
-    debug(`process.platform: ${this._platform}`)
+    log(`process.platform: ${this._platform}`)
     if (this._platform === 'darwin') {
       options.backup = false
     }
@@ -388,9 +420,11 @@ export class Unpacker extends EventEmitter {
     const tarExcludes = '--exclude=__MACOSX* --exclude=._* --exclude=.git* --exclude=.svn*'
     if (this._isTarFile && !this._isCompressed) {
       // TAR .tar
+      // @TODO add the -C destdir argument to tar command to extract archive into its current directory, not the process.cwd
       unpack = `${this._tar.path} ${tarExcludes} -xf ${this._path}`
     } else if (this._isTarFile && this._isGzipFile) {
       // Compressed TAR .tar.gz or .tgz
+      // @TODO add the -C destdir argument to tar command to extract archive into its current directory, not the process.cwd
       unpack = `${this._tar.path} ${tarExcludes} -xzf ${this._path}`
     } else if (this._isGzipFile && this._isCompressed) {
       // GZIP file is probably a .gz
@@ -409,15 +443,15 @@ export class Unpacker extends EventEmitter {
     /* eslint-disable-next-line no-useless-escape */
     destination = destination.replace(/(.*[^\/])$/, '$1/')
     try {
-      debug(`unpack: ${unpack}`)
-      debug(`destination: ${destination}`)
+      log(`unpack: ${unpack}`)
+      log(`destination: ${destination}`)
       result = await cmd(unpack)
-      debug(result)
+      log(result)
       if (result.stderr !== '' && result.stdout === '') {
         throw new Error(result.stderr)
       }
     } catch (e) {
-      debug(e)
+      error(e)
       const cause = e
       throw new Error('Failed trying to move unpacked file(s)', { cause })
     }
@@ -429,7 +463,7 @@ export class Unpacker extends EventEmitter {
         // the process.cwd context of the excuting script.
         this._tempDir = `${this._file.dir}/${this._fileBasename}`
       }
-      debug(`tempDir: ${this._tempDir}`)
+      log(`tempDir: ${this._tempDir}`)
       stats = await fs.stat(this._tempDir)
       if (stats.isDirectory()) {
         result.unpacked = true
@@ -442,10 +476,29 @@ export class Unpacker extends EventEmitter {
         /* eslint-disable-next-line no-useless-escape */
         destination += `${this._fileBasename.replace(/^(\w+?[^\.]*)((\.?)\w+)?$/, '$1')}/`
       }
+      if (rename?.rename) {
+        log(`renaming ${this._path.base} -> ${rename.newName}`)
+        try {
+          const renamed = await this.rename(this._tempDir, rename.newName)
+          result.destination = renamed.destination
+          result.command = renamed.command
+          result.cwd = renamed.destination
+          result.finalPath = renamed.destination
+        } catch (e) {
+          error(e)
+          throw new Error(e)
+        }
+      }
+      log('result contents: ', result)
+      log('about to call mv with:')
+      log(`result._tempDir: ${this._tempDir}`)
+      log(`destination: ${destination}`)
+      log(options)
       const move = await this.mv(this._tempDir, destination, options)
       result.destination = destination
-      debug(move)
+      log('did the mv command work?', move)
     } catch (e) {
+      error(e)
       const cause = new Error(`Error ocurred trying to move ${this._tempDir} to ${destination}`)
       throw new Error(e, { cause })
     }
@@ -453,19 +506,10 @@ export class Unpacker extends EventEmitter {
       await this.cleanup('__MACOSX')
       await this.cleanup(`._${this._file.name}`)
     } catch (e) {
-      debug(e)
+      error(e)
     }
-    if (rename?.rename) {
-      try {
-        const renamed = await this.rename(this._destination, rename.newName)
-        result.destination = renamed.destination
-        result.command = renamed.command
-        debug(this._destination)
-      } catch (e) {
-        debug(e)
-        throw new Error(e)
-      }
-    }
+    log(`_destination: ${this._destination}`)
+    log('final unpack results: ', result)
     return result
   }
 
@@ -482,30 +526,34 @@ export class Unpacker extends EventEmitter {
    * @return { boolean } True if rename operation was successful.
    */
   async rename(oldPath, newPath, options = null) {
+    const log = _log.extend('rename')
+    const error = _error.extend('rename')
     if (!oldPath) throw new Error('Missing source argument')
     if (!newPath) throw new Error('Missing destination argument')
     const opts = { force: true, backup: 'numbered', ...options }
     if (this._platform === 'darwin') {
       opts.backup = false
     }
-    debug('rename opts: %o', opts)
-    debug(`${oldPath} ${newPath}`)
-    debug('pre-rename this._destination: ', this._destination)
+    log('rename opts: %o', opts)
+    log(`${oldPath} ${newPath}`)
+    log('pre-rename this._destination: ', this._destination)
     let result
     try {
-      const fullDestination = `${oldPath}${(this._tempDir.split('/').splice(-1, 1))[0]}`
+      // const fullDestination = `${oldPath}${(this._tempDir.split('/').splice(-1, 1))[0]}`
+      const fullDestination = this._tempDir
       const splitDestination = oldPath.split('/')
       splitDestination.splice(-1, 1, newPath)
       const renamedDestination = splitDestination.join('/')
-      const mv = `mv ${(opts.force ? '-f' : '')} ${(opts.backup === 'numbered' ? '--backup=numbered' : '')} ${fullDestination} ${renamedDestination}`
-      debug(`mv: ${mv}`)
+      const mv = `mv ${(opts.force ? '-f' : '')}${(opts.backup === 'numbered' ? '--backup=numbered ' : ' ')}${fullDestination} ${renamedDestination}`
+      log(`mv: ${mv}`)
       result = await cmd(mv)
       result.command = mv
       result.destination = renamedDestination
-      debug('renamed destination: ', result)
-      this._destination = renamedDestination
+      log('renamed destination: ', result)
+      // this._destination = renamedDestination
+      this._tempDir = renamedDestination
     } catch (e) {
-      debug(e)
+      error(e)
       throw new Error(e)
     }
     return result
@@ -524,15 +572,18 @@ export class Unpacker extends EventEmitter {
    * @return { boolean } True if move is successful.
    */
   async mv(source, destination, options = null) {
+    const log = _log.extend('mv')
+    const error = _error.extend('mv')
     if (!source) throw new Error('Missing source argument')
     if (!destination) throw new Error('Missing destination argument')
     const opts = { makeDir: true, ...options }
-    debug('opts: %o', opts)
-    debug(`${source} ${destination}`)
+    log('opts: %o', opts)
+    log(`${source} ${destination}`)
     try {
       const sourceStats = await fs.stat(source)
-      debug(`isDir: ${sourceStats.isDirectory()}`)
+      log(`isDir: ${sourceStats.isDirectory()}`)
     } catch (e) {
+      error(e)
       throw new Error(`Source missing directory: ${source}`)
     }
     let destinationDoesntExist = true
@@ -542,30 +593,35 @@ export class Unpacker extends EventEmitter {
     } catch (e) {
       destinationDoesntExist = false
       const mkdir = `mkdir -v -p ${destination}`
-      debug(`destinationDoesntExist: ${destinationDoesntExist}`)
-      debug(`mkdir: ${mkdir}`)
+      log(`destinationDoesntExist: ${destinationDoesntExist}`)
+      log(`mkdir: ${mkdir}`)
       const result = await cmd(mkdir)
       if (result.stderr.trim() !== '') {
+        error(`Failed to make dir: ${destination}`)
         throw new Error(`Failed to make dir: ${destination}`)
       }
     }
     try {
       destinationStats = await fs.stat(destination)
       if (destinationStats.isDirectory() && !opts.force) {
+        error(`Destination already exists, no over-writing:  ${destination}`)
         throw new Error(`Destination already exists, no over-writing:  ${destination}`)
       }
-      const mv = `mv ${(opts.force ? '-f' : '')} ${(opts.backup === 'numbered' ? '--backup=numbered' : '')} ${source} ${destination}`
-      debug(`mv: ${mv}`)
+      const mv = `mv ${(opts.force ? '-f' : ' ')}${(opts.backup === 'numbered' ? '--backup=numbered' : ' ')}${source} ${destination}`
+      log(`mv: ${mv}`)
       const result = await cmd(mv)
-      debug(result)
+      log(result)
       if (result.stderr !== '') {
+        error(`Move failed. source: ${source} destination: ${destination}`)
         throw new Error(`Move failed. source: ${source} destination: ${destination}`)
       }
     } catch (e) {
+      error(e)
       const cause = new Error(e.message)
       throw new Error('Move failed. Cause: ', { cause })
     }
     this._destination = destination
+    log(this._destination)
     return true
   }
 
@@ -579,8 +635,10 @@ export class Unpacker extends EventEmitter {
    * @return { Object[] } An object literal with an array of file names.
    */
   async list(file = this._path) {
+    const log = _log.extend('list')
+    const error = _error.extend('list')
     let list
-    debug(this._isTarFile)
+    log(this._isTarFile)
     try {
       if (this._isTarFile) {
         list = this.tar_t(file)
@@ -592,6 +650,7 @@ export class Unpacker extends EventEmitter {
         list = this.unzip_l(file)
       }
     } catch (e) {
+      error(e)
       const cause = e
       throw new Error(`Failed to list contents of archive: ${file}`, { cause })
     }
@@ -609,18 +668,21 @@ export class Unpacker extends EventEmitter {
    * @return { Object[] } An object literal with an array of the file names.
    */
   async tar_t(tarFile = this._path) {
-    debug(tarFile)
+    const log = _log.extend('tar_t')
+    const error = _error.extend('tar_t')
+    log(tarFile)
     const o = {}
     try {
       const excludes = '--exclude=__MACOSX --exclude=._* --exclude=.svn --exclude=.git*'
       const tar = `tar ${excludes} -t${(this._isCompressed ? 'z' : '')}f`
-      debug(`cmd: ${tar} ${tarFile}`)
+      log(`cmd: ${tar} ${tarFile}`)
       o.cmd = `${tar} ${tarFile}`
       const result = await cmd(`${tar} ${tarFile}`)
-      debug(result.stdout)
+      log(result.stdout)
       const list = result.stdout.trim().split('\n')
       o.list = list
     } catch (e) {
+      error(e)
       throw new Error(`Couldn't Tar tail the archive ${tarFile}`)
     }
     return o
@@ -637,24 +699,27 @@ export class Unpacker extends EventEmitter {
    * @return { Object } An object literal with the file name.
    */
   async gunzip_l(gzFile = this._file) {
-    debug(gzFile)
+    const log = _log.extend('gunzip_l')
+    const error = _error.extend('gunzip_l')
+    log(gzFile)
     const o = {}
     try {
       const gunzip = 'gunzip -l --quiet'
-      debug(`cmd: ${gunzip} ${gzFile}`)
+      log(`cmd: ${gunzip} ${gzFile}`)
       o.cmd = `${gunzip} ${gzFile}`
       const result = await cmd(`${gunzip} ${gzFile}`)
-      debug(result)
+      log(result)
       const list = result.stdout.trim().split('\n')
       /* eslint-disable-next-line no-useless-escape */
       const pattern = '^.*\/(.+)$'
       const re = new RegExp(pattern)
       list.forEach((e, i) => {
-        debug(pattern)
+        log(pattern)
         list[i] = e.replace(re, '$1')
       })
       o.list = list
     } catch (e) {
+      error(e)
       throw new Error(`Couldn't Gunzip list the archive contents ${gzFile}`)
     }
     return o
@@ -671,26 +736,29 @@ export class Unpacker extends EventEmitter {
    * @return { Object[] } An object literal with an array of the file names.
    */
   async unzip_l(zipFile = this._path) {
-    debug(zipFile)
+    const log = _log.extend('unzip_l')
+    const error = _error.extend('unzip_l')
+    log(zipFile)
     const o = {}
     try {
       // const unzip = 'unzip -qql '
       const unzip = 'unzip -Z -1 '
       const excludes = '-x __MACOSX*'
-      debug(`cmd: ${unzip} ${zipFile} ${excludes}`)
+      log(`cmd: ${unzip} ${zipFile} ${excludes}`)
       o.cmd = `${unzip} ${zipFile} ${excludes}`
       const result = await cmd(`${unzip} ${zipFile} ${excludes}`)
-      debug(result.stdout)
+      log(result.stdout)
       const list = result.stdout.trim().split('\n').slice(1)
       /* eslint-disable-next-line no-useless-escape */
       const pattern = `^.*${this._fileBasename}\\/(.+)$`
       const re = new RegExp(pattern)
       list.forEach((e, i) => {
-        debug(pattern)
+        log(pattern)
         list[i] = e.replace(re, '$1')
       })
       o.list = list
     } catch (e) {
+      error(e)
       throw new Error(`Couldn't Unzip list the archive ${zipFile}`)
     }
     return o
@@ -705,11 +773,16 @@ export class Unpacker extends EventEmitter {
    * @return { undefined }
    */
   async cleanup(artifact) {
+    const log = _log.extend('cleanup')
+    const error = _error.extend('cleanup')
     const x = `${this._cwd}/${artifact}`
     try {
-      await cmd(`rm -rf ${x}`)
+      const rm = `rm -rf ${x}`
+      await cmd(rm)
+      log(`cleanup cmd: ${rm}`)
+      log('cleanup ok')
     } catch (e) {
-      debug(e)
+      error(e)
     }
   }
 }
