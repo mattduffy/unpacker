@@ -478,6 +478,7 @@ export class Unpacker extends EventEmitter {
         /* eslint-disable-next-line no-useless-escape */
         destination += `${this._fileBasename.replace(/^(\w+?[^\.]*)((\.?)\w+)?$/, '$1')}/`
       }
+      result.finalPath = `${destination}${this._fileBasename}`
       if (rename?.rename) {
         log(`renaming ${this._path.base} -> ${rename.newName}`)
         try {
