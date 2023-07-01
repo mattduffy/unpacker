@@ -404,6 +404,7 @@ export class Unpacker extends EventEmitter {
   async unpack(moveTo, opts, rename) {
     const log = _log.extend('unpack')
     const error = _error.extend('unpack')
+    this._destination = moveTo
     let destination = moveTo ?? '.'
     const options = { force: true, backup: 'numbered', ...opts }
     log(`process.platform: ${this._platform}`)
@@ -445,10 +446,10 @@ export class Unpacker extends EventEmitter {
     /* eslint-disable-next-line no-useless-escape */
     destination = destination.replace(/(.*[^\/])$/, '$1/')
     try {
-      log(`unpack: ${unpack}`)
+      log(`unpack command: ${unpack}`)
       log(`destination: ${destination}`)
       result = await cmd(unpack)
-      log(result)
+      log('result: ', result)
       if (result.stderr !== '' && result.stdout === '') {
         throw new Error(result.stderr)
       }
@@ -478,11 +479,11 @@ export class Unpacker extends EventEmitter {
         /* eslint-disable-next-line no-useless-escape */
         destination += `${this._fileBasename.replace(/^(\w+?[^\.]*)((\.?)\w+)?$/, '$1')}/`
       }
-      result.finalPath = `${destination}${this._fileBasename}`
       if (rename?.rename) {
-        log(`renaming ${this._path.base} -> ${rename.newName}`)
+        log(`renaming ${this._file.name} -> ${rename.newName}`)
         try {
           const renamed = await this.rename(this._tempDir, rename.newName)
+          this._file.name = rename.newName
           result.destination = renamed.destination
           result.command = renamed.command
           result.cwd = renamed.destination
@@ -499,6 +500,7 @@ export class Unpacker extends EventEmitter {
       log(options)
       const move = await this.mv(this._tempDir, destination, options)
       result.destination = destination
+      result.finalPath = `${destination}${this._file.name}`
       log('did the mv command work?', move)
     } catch (e) {
       error(e)
