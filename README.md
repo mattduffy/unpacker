@@ -66,7 +66,7 @@ console.log(result)
 // }
 ```
 
-The ```unpack()``` method also accepts two additional optional parameters.  The first optional parameter is for controlling how the underlying ```mv``` command works.  The default behavior is to tell the ```mv``` command to force a move, and automatically create a backup of an existing directory.  If you don't mind overwritting an existing directory, you can set the prperty ```backup: ''```.  The second optional parameter lets you change the destination directory name after it has been moved.
+The ```unpack()``` method also accepts two additional optional parameters.  The first optional parameter is for controlling how the underlying ```mv``` command works.  The default behavior is to tell the ```mv``` command to force a move, and automatically create a backup of an existing directory.  If you don't mind overwritting an existing directory, you can set the property ```backup: ''```.  The second optional parameter lets you change the destination directory name after it has been moved.
 ```javascript
 // default mv command options { force: true, backup: 'numbered'}
 const unpacker = new Unpacker()
