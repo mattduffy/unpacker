@@ -206,13 +206,13 @@ export class Unpacker extends EventEmitter {
     const log = _log.extend('setExtension')
     const error = _error.extend('setExtension')
     // const ext = /\.*(\.(t(ar)?(\.?gz)?)|(rar)?|(zip)?|(gz)?)$/.exec(file)
-    const ext = /\.*(?<tar>\.tar$)|(\.(?<tgz>t(?:ar)?(\.?gz)?)|(?<rar>rar)|(?<zip>zip)?|(?<gz>gz)?)$/.exec(file)
+    const ext = /\.*(?<tar>\.tar$)|(\.(?<tgz>t(?:ar)?(\.?gz)?)|(?<rar>\.rar)|(?<zip>\.zip)?|(?<gz>\.gz)?)$/.exec(file)
     if (ext === null) {
       error(`${file} does not look like an compressed archive file.`)
       throw new Error(`File ${file} does not look like a (compressed) archive file.`)
     }
     // log(`file extension: ${ext[0]}`)
-    log('file extension: ', ext?.groups)
+    log('file extension matches: ', ext?.groups)
     // if (['.tar.gz', '.tgz'].includes(ext[0])) {
     if (ext.groups.tgz && !ext.groups.gz) {
       this._isCompressed = true
@@ -239,6 +239,7 @@ export class Unpacker extends EventEmitter {
       throw new Error(`File ${file} does not look like a (compressed) archive file.`)
     }
     [this._fileExt] = ext
+    log(`file extension set to: ${this._fileExt}`)
   }
 
   /**
@@ -480,7 +481,8 @@ export class Unpacker extends EventEmitter {
       // TAR .tar
       // @TODO add the -C destdir argument to tar command to extract archive into its current directory, not the process.cwd
       unpack = `${this._tar.path} ${tarExcludes} -xf ${this._path}`
-    } else if (this._isTarFile && this._isGzipFile) {
+    // } else if (this._isTarFile && this._isGzipFile) {
+    } else if (this._isTarFile && this._isCompressed) {
       // Compressed TAR .tar.gz or .tgz
       // @TODO add the -C destdir argument to tar command to extract archive into its current directory, not the process.cwd
       unpack = `${this._tar.path} ${tarExcludes} -xzf ${this._path}`
@@ -498,6 +500,10 @@ export class Unpacker extends EventEmitter {
       // unpack = `${this._unrar.path} x ${this._path}`
       unpack = `${this._unrar.path} e -ad ${this._path}`
     } else {
+      error(`this._isTarFile: ${this._isTarFile} (compressed? ${this._isCompressed}`)
+      error(`this._isRarFile: ${this._isRarFile}`)
+      error(`this._isGzipFile: ${this._isGzipFile}`)
+      error(`this._isGzipFile: ${this._isZipFile}`)
       throw new Error(`Not an archive? ${this._path}`)
     }
     let result
@@ -507,12 +513,9 @@ export class Unpacker extends EventEmitter {
     /* eslint-disable-next-line no-useless-escape */
     destination = destination.replace(/(.*[^\/])$/, '$1/')
     try {
-      // console.log(`unpack command: ${unpack}`)
-      // console.log(`destination: ${destination}`)
       log(`unpack command: ${unpack}`)
       log(`destination: ${destination}`)
       result = await cmd(unpack)
-      // console.log('result: ', result)
       log('result: ', result)
       if (result.stderr !== '' && result.stdout === '') {
         throw new Error(result.stderr)
@@ -530,7 +533,6 @@ export class Unpacker extends EventEmitter {
         // the process.cwd context of the excuting script.
         this._tempDir = `${this._file.dir}/${this._fileBasename}`
       }
-      // console.log(`tempDir: ${this._tempDir}`)
       log(`tempDir: ${this._tempDir}`)
       stats = await fs.stat(this._tempDir)
       if (stats.isDirectory()) {
@@ -559,11 +561,6 @@ export class Unpacker extends EventEmitter {
           throw new Error(e)
         }
       }
-      // console.log('result contents: ', result)
-      // console.log('about to call mv with:')
-      // console.log(`result._tempDir: ${this._tempDir}`)
-      // console.log(`destination: ${destination}`)
-      // console.log(options)
       log('result contents: ', result)
       log('about to call mv with:')
       log(`result._tempDir: ${this._tempDir}`)
@@ -585,8 +582,6 @@ export class Unpacker extends EventEmitter {
       error(e)
     }
     result.command = unpack
-    // console.log(`_destination: ${this._destination}`)
-    // console.log('final unpack results: ', result)
     log(`_destination: ${this._destination}`)
     log('final unpack results: ', result)
     return result
@@ -756,7 +751,7 @@ export class Unpacker extends EventEmitter {
     const o = {}
     try {
       const excludes = '--exclude=__MACOSX --exclude=._* --exclude=.svn --exclude=.git*'
-      const tar = `tar ${excludes} -t${(this._isCompressed ? 'z' : '')}f`
+      const tar = `tar ${excludes} --list ${(this._isCompressed ? '-z' : '')} -f`
       log(`cmd: ${tar} ${tarFile}`)
       o.cmd = `${tar} ${tarFile}`
       const result = await cmd(`${tar} ${tarFile}`)
