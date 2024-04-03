@@ -16,6 +16,7 @@ const __dirname = nodePath.dirname(__filename)
 const cmd = promisify(exec)
 const _log = Debug('unpacker:class:LOG')
 const _error = Debug('unpacker:class:ERROR')
+const RAR = 'application/x-rar'
 const TAR = 'application/x-tar'
 const ZIP = 'application/zip'
 const GZIP = 'application/gzip'
@@ -43,10 +44,12 @@ export class Unpacker extends EventEmitter {
     this._mimetype = null
     this._fileList = null
     this._isTarFile = false
+    this._isRarFile = false
     this._isGzipFile = false
     this._isZipFile = false
     this._isCompressed = false
     this._tar = null
+    this._unrar = null
     this._gzip = null
     this._unzip = null
     this._cwd = process.cwd()
@@ -87,6 +90,13 @@ export class Unpacker extends EventEmitter {
       throw new Error('Failed to find tar.')
     }
     try {
+      if (this._unrar === null) {
+        await this.whichRar()
+      }
+    } catch (e) {
+      throw new Error('Failed to find tar.')
+    }
+    try {
       if (this._gzip === null) {
         await this.whichGzip()
       }
@@ -119,7 +129,7 @@ export class Unpacker extends EventEmitter {
       this.setExtension(filePath)
     } catch (e) {
       error(e)
-      throw new Error(`File extension problem: ${filePath}`)
+      throw new Error(`File extension problem: ${filePath}`, { cause: e })
     }
     try {
       this.setFileBasename(filePath)
@@ -162,6 +172,9 @@ export class Unpacker extends EventEmitter {
         case TAR:
           this._mimetype = TAR
           break
+        case RAR:
+          this._mimetype = RAR
+          break
         case ZIP:
           this._mimetype = ZIP
           break
@@ -192,35 +205,38 @@ export class Unpacker extends EventEmitter {
   setExtension(file = this._file) {
     const log = _log.extend('setExtension')
     const error = _error.extend('setExtension')
-    const ext = /\.*(\.(t(ar)?(\.?gz)?)|(zip)?|(gz)?)$/.exec(file)
+    // const ext = /\.*(\.(t(ar)?(\.?gz)?)|(rar)?|(zip)?|(gz)?)$/.exec(file)
+    const ext = /\.*(?<tar>\.tar$)|(\.(?<tgz>t(?:ar)?(\.?gz)?)|(?<rar>rar)|(?<zip>zip)?|(?<gz>gz)?)$/.exec(file)
     if (ext === null) {
       error(`${file} does not look like an compressed archive file.`)
       throw new Error(`File ${file} does not look like a (compressed) archive file.`)
     }
-    log(`file extension: ${ext[0]}`)
-    if (this._mimetype === ZIP) {
+    // log(`file extension: ${ext[0]}`)
+    log('file extension: ', ext?.groups)
+    // if (['.tar.gz', '.tgz'].includes(ext[0])) {
+    if (ext.groups.tgz && !ext.groups.gz) {
       this._isCompressed = true
-      this._isZipFile = true
-      this._isGzipFile = false
-      this._isTarFile = false
-    }
-    if (this._mimetype === GZIP) {
-      this._isCompressed = true
-      this._isGzipFile = true
-      this._isZipFile = false
-      this._isTarFile = false
-    }
-    if (/\.?tar$/.test(ext[0])) {
+      this._isTarFile = true
+      // hack to work around mimetype reported as application/gzip when compressed tar
+      this._mimetype = TAR
+    // } else if (/\.?tar$/.test(ext[0])) {
+    } else if (ext.groups.tar) {
       this._isTarFile = true
       this._isCompressed = false
-      this._isZipFile = false
-      this._isGzipFile = false
-    }
-    if (['.tar.gz', '.tgz'].includes(ext[0])) {
+    // } else if (this._mimetype === ZIP) {
+    } else if (this._mimetype === ZIP && ext.groups.zip) {
       this._isCompressed = true
-      this._isTarFile = true
-      this.isGzipFile = true
-      this._isZipFile = false
+      this._isZipFile = true
+    // } else if (this._mimetype === GZIP) {
+    } else if (this._mimetype === GZIP && ext.groups.gz && !ext.groups.tar && !ext.groups.tgz) {
+      this._isCompressed = true
+      this._isGzipFile = true
+    // } else if (this._mimetype === RAR) {
+    } else if (this._mimetype === RAR && ext.groups.rar) {
+      this._isCompressed = false
+      this._isRarFile = true
+    } else {
+      throw new Error(`File ${file} does not look like a (compressed) archive file.`)
     }
     [this._fileExt] = ext
   }
@@ -292,6 +308,41 @@ export class Unpacker extends EventEmitter {
     }
     this._tar = tar
     log(`which tar -> ${this._tar.path}`)
+  }
+
+  /**
+   * Find the location of the unrar executable.
+   * @summary Find the location of the unrar executable.
+   * @author Matthew Duffy <mattduffy@gmail.com>
+   * @async
+   * @thows { Error } Throws an error if search for unrar fails.
+   * @return { undefined } Returns undefined if no error is encountered.
+   */
+  async whichRar() {
+    const log = _log.extend('whichRar')
+    const error = _error.extend('whichRar')
+    const unrar = { path: null, version: null }
+    try {
+      let path = await cmd('which unrar')
+      path = path.stdout.trim()
+      if (!/unrar/.test(path)) {
+        this._unrar = false
+        return
+      }
+      unrar.path = path
+    } catch (e) {
+      error(e)
+      throw new Error(e)
+    }
+    try {
+      const version = await cmd(`${unrar.path} | awk '/([0-9]+.[0-9]+)/ { print $2 }'`)
+      unrar.version = version.stdout.trim()
+    } catch (e) {
+      error(e)
+      throw new Error(e)
+    }
+    this._unrar = unrar
+    log(`which unrar -> ${this._unrar.path}`)
   }
 
   /**
@@ -367,8 +418,8 @@ export class Unpacker extends EventEmitter {
   }
 
   /**
-   * Check for the presence of usable versions of tar and gzip.
-   * @summary Check for the presence of usuable versions of tar and gzip.
+   * Check for the presence of usable versions of tar, unrar and gzip.
+   * @summary Check for the presence of usuable versions of tar, unrar and gzip.
    * @author Matthew Duffy <mattduffy@gmail.com>
    * @async
    * @return { Object } An object literal with success or error messages.
@@ -377,13 +428,16 @@ export class Unpacker extends EventEmitter {
     if (this._tar === null) {
       await this.whichTar()
     }
+    if (this._unrar === null) {
+      await this.whichRar()
+    }
     if (this._gzip === null) {
       await this.whichGzip()
     }
     if (this._unzip === null) {
       await this.whichUnzip()
     }
-    return { tar: this._tar, gzip: this._gzip, unzip: this._unzip }
+    return { tar: this._tar, unrar: this._unrar, gzip: this._gzip, unzip: this._unzip }
   }
 
   /**
@@ -417,6 +471,9 @@ export class Unpacker extends EventEmitter {
     if (this.gzip === null && this._mimetype === GZIP) {
       throw new Error(`Archive is ${this._mimetype}, but can't find gzip executable.`)
     }
+    if (this.unrar === null && this._mimetype === RAR) {
+      throw new Error(`Archive is ${this._mimetype}, but can't find unrar executable.`)
+    }
     let unpack
     const tarExcludes = '--exclude=__MACOSX* --exclude=._* --exclude=.git* --exclude=.svn*'
     if (this._isTarFile && !this._isCompressed) {
@@ -436,6 +493,10 @@ export class Unpacker extends EventEmitter {
       const zipExcludes = '-x \'__MACOSX*\''
       // unpack = `${this._unzip.path} ${this._path} ${zipExcludes}`
       unpack = `${this._unzip.path} -o ${this._path} ${zipExcludes}`
+    } else if (this._isRarFile) {
+      // RAR .rar
+      // unpack = `${this._unrar.path} x ${this._path}`
+      unpack = `${this._unrar.path} e -ad ${this._path}`
     } else {
       throw new Error(`Not an archive? ${this._path}`)
     }
@@ -446,9 +507,12 @@ export class Unpacker extends EventEmitter {
     /* eslint-disable-next-line no-useless-escape */
     destination = destination.replace(/(.*[^\/])$/, '$1/')
     try {
+      // console.log(`unpack command: ${unpack}`)
+      // console.log(`destination: ${destination}`)
       log(`unpack command: ${unpack}`)
       log(`destination: ${destination}`)
       result = await cmd(unpack)
+      // console.log('result: ', result)
       log('result: ', result)
       if (result.stderr !== '' && result.stdout === '') {
         throw new Error(result.stderr)
@@ -459,13 +523,14 @@ export class Unpacker extends EventEmitter {
       throw new Error('Failed trying to move unpacked file(s)', { cause })
     }
     try {
-      if (this._isTarFile || this._isZipFile) {
+      if (this._isTarFile || this._isRarFile || this._isZipFile) {
         this._tempDir = `${this._cwd}/${this._fileBasename}`
       } else {
         // Gzip files extract into the directory they are in, not into
         // the process.cwd context of the excuting script.
         this._tempDir = `${this._file.dir}/${this._fileBasename}`
       }
+      // console.log(`tempDir: ${this._tempDir}`)
       log(`tempDir: ${this._tempDir}`)
       stats = await fs.stat(this._tempDir)
       if (stats.isDirectory()) {
@@ -480,6 +545,7 @@ export class Unpacker extends EventEmitter {
         destination += `${this._fileBasename.replace(/^(\w+?[^\.]*)((\.?)\w+)?$/, '$1')}/`
       }
       if (rename?.rename) {
+        console.log(`renaming ${this._file.name} -> ${rename.newName}`)
         log(`renaming ${this._file.name} -> ${rename.newName}`)
         try {
           const renamed = await this.rename(this._tempDir, rename.newName)
@@ -493,6 +559,11 @@ export class Unpacker extends EventEmitter {
           throw new Error(e)
         }
       }
+      // console.log('result contents: ', result)
+      // console.log('about to call mv with:')
+      // console.log(`result._tempDir: ${this._tempDir}`)
+      // console.log(`destination: ${destination}`)
+      // console.log(options)
       log('result contents: ', result)
       log('about to call mv with:')
       log(`result._tempDir: ${this._tempDir}`)
@@ -514,6 +585,8 @@ export class Unpacker extends EventEmitter {
       error(e)
     }
     result.command = unpack
+    // console.log(`_destination: ${this._destination}`)
+    // console.log('final unpack results: ', result)
     log(`_destination: ${this._destination}`)
     log('final unpack results: ', result)
     return result
@@ -649,6 +722,9 @@ export class Unpacker extends EventEmitter {
       if (this._isTarFile) {
         list = this.tar_t(file)
       }
+      if (this._isRarFile) {
+        list = this.unrar_lb(file)
+      }
       if (this._isGzipFile && !this._isTarFile) {
         list = this.gunzip_l(file)
       }
@@ -690,6 +766,39 @@ export class Unpacker extends EventEmitter {
     } catch (e) {
       error(e)
       throw new Error(`Couldn't Tar tail the archive ${tarFile}`)
+    }
+    return o
+  }
+
+  /**
+   * List the contents of a Rar file.  Called by the proxy method, list().
+   * @summary List the contents of a Rar file.  Called by the proxy method, list().
+   * @see list
+   * @author Matthew Duffy <mattduffy@gmail.com>
+   * @async
+   * @param { string } rarFile - A string containing the name of the Rar file.
+   * @throws { Error } Throws an error if the contents of the Tar file cannot be listed.
+   * @return { Object[] } An object literal with an array of the file names.
+   */
+  async unrar_lb(rarFile = this._path) {
+    const log = _log.extend('rar_lb')
+    const error = _error.extend('rar_lb')
+    log(rarFile)
+    const o = {}
+    try {
+      // const excludes = 'xMACOSX x._* x.svn x.git*'
+      const excludes = ''
+      const unrar = `unrar ${excludes} lb`
+      log(`cmd: ${unrar} ${rarFile}`)
+      o.cmd = `${unrar} ${rarFile}`
+      console.log(o)
+      const result = await cmd(`${unrar} ${rarFile}`)
+      log(result.stdout)
+      const list = result.stdout.trim().split('\n')
+      o.list = list
+    } catch (e) {
+      error(e)
+      throw new Error(`Couldn't Rar list the archive ${rarFile}`)
     }
     return o
   }
