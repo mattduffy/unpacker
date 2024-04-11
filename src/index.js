@@ -476,7 +476,7 @@ export class Unpacker extends EventEmitter {
       throw new Error(`Archive is ${this._mimetype}, but can't find unrar executable.`)
     }
     let unpack
-    const tarExcludes = '--exclude=__MACOSX* --exclude=._* --exclude=.git* --exclude=.svn*'
+    const tarExcludes = '--warning=no-unknown-keyword --exclude=__MACOSX* --exclude=._* --exclude=.git* --exclude=.svn*'
     if (this._isTarFile && !this._isCompressed) {
       // TAR .tar
       // @TODO add the -C destdir argument to tar command to extract archive into its current directory, not the process.cwd
@@ -547,7 +547,6 @@ export class Unpacker extends EventEmitter {
         destination += `${this._fileBasename.replace(/^(\w+?[^\.]*)((\.?)\w+)?$/, '$1')}/`
       }
       if (rename?.rename) {
-        console.log(`renaming ${this._file.name} -> ${rename.newName}`)
         log(`renaming ${this._file.name} -> ${rename.newName}`)
         try {
           const renamed = await this.rename(this._tempDir, rename.newName)
@@ -558,18 +557,20 @@ export class Unpacker extends EventEmitter {
           result.finalPath = renamed.destination
         } catch (e) {
           error(e)
-          throw new Error(e)
+          throw new Error('Failed to rename desintation.', { cause: e })
         }
+      } else {
+        result.destination = destination
+        // result.finalPath = `${destination}${this._file.name}`
+        result.finalPath = `${destination}${this._fileBasename}`
       }
+      log('move opts: ', options)
+      const move = await this.mv(this._tempDir, destination, options)
+      log('did the mv command work?', move)
       log('result contents: ', result)
       log('about to call mv with:')
       log(`result._tempDir: ${this._tempDir}`)
       log(`destination: ${destination}`)
-      log(options)
-      const move = await this.mv(this._tempDir, destination, options)
-      result.destination = destination
-      result.finalPath = `${destination}${this._file.name}`
-      log('did the mv command work?', move)
     } catch (e) {
       error(e)
       const cause = new Error(`Error ocurred trying to move ${this._tempDir} to ${destination}`)
@@ -612,6 +613,17 @@ export class Unpacker extends EventEmitter {
     log(`${oldPath} ${newPath}`)
     log('pre-rename this._destination: ', this._destination)
     let result
+    try {
+      const parsedPath = nodePath.parse(nodePath.resolve(newPath))
+      result = await cmd(`mkdir -p ${parsedPath.dir}`)
+      // finish this part - make missing parent dirs on renaming destination
+      // mv tmp/marquetry --> albums/<001>/marquetry
+      // figure out how to add the <001> part
+    } catch (e) {
+      error('Renamed destination failed to make missing parent directories.')
+      error(e)
+      throw new Error('Missing parent dirs for renamed destination.', { cause: e })
+    }
     try {
       // const fullDestination = `${oldPath}${(this._tempDir.split('/').splice(-1, 1))[0]}`
       const fullDestination = this._tempDir
