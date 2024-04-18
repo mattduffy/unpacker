@@ -27,14 +27,20 @@ await unpacker.setPath('/absolute/path/to/archive.tar.gz')
 
 The `setPath()` method requires a single parameter specifying the location of an archive file.  The method will accept either a relative path or an absolute path to the archive.  The relative path is resolved from the current working directory of the module that included the Unpacker package.  If the path provided to the method does not succesfully resolve to a file, with a mime type of `application/x-tar`, `application/x-rar`, `application/zip` or `application/gzip`, it will throw an error.
 
-After the `setPath()` method has been called, the mime type of the archive is available with the `getMimetype()` method.
+After the `setPath()` method has been called, there are some useful helper methods to provide information about the archive file.  The mime type of the archive is available with the `getMimetype()` method.  The basename of the file is available with `getFileBasename()` and the extension from `getExtension()`.  These two can be especially helpful for compressed tar files that use the extension __.tar.gz__ rather that the more simple __.tgz__ extension.  The `getPath()` method returns the fully qualified path to the archive file. 
 
 ```javascript
 const unpacker = new Unpacker()
 await unpacker.setPath('uploads/photos.tar.gz')
 const mime = unpacker.getMimetype()
 console.log(mime)
-// 'application/gzip'
+// 'application/x-tar'
+console.log(unpacker.getFileBasename())
+// 'photos'
+console.log(unpacker.getExtension())
+// '.tar.gz'
+console.log(unpacker.getPath())
+// '/absolute/path/to/uploads/photos.tar.gz'
 ```
 
 If you would like to see the path to binaries used for unpacking, and their respective version numbers, the `checkCommands()` method will provide that.  This is an **Async/Await** method.
