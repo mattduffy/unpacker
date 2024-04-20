@@ -477,15 +477,16 @@ export class Unpacker extends EventEmitter {
     }
     let unpack
     const tarExcludes = '--warning=no-unknown-keyword --exclude=__MACOSX* --exclude=._* --exclude=.git* --exclude=.svn*'
+    const tarDirOptions = '--one-top-level --strip-components=1'
     if (this._isTarFile && !this._isCompressed) {
       // TAR .tar
       // @TODO add the -C destdir argument to tar command to extract archive into its current directory, not the process.cwd
-      unpack = `${this._tar.path} ${tarExcludes} -xf ${this._path}`
+      unpack = `${this._tar.path} ${tarExcludes} ${tarDirOptions} -xf ${this._path}`
     // } else if (this._isTarFile && this._isGzipFile) {
     } else if (this._isTarFile && this._isCompressed) {
       // Compressed TAR .tar.gz or .tgz
       // @TODO add the -C destdir argument to tar command to extract archive into its current directory, not the process.cwd
-      unpack = `${this._tar.path} ${tarExcludes} -xzf ${this._path}`
+      unpack = `${this._tar.path} ${tarExcludes} ${tarDirOptions} -xzf ${this._path}`
     } else if (this._isGzipFile && this._isCompressed) {
       // GZIP file is probably a .gz
       // unpack = `${this._gzip.path} --decompress --keep --suffix ${this._file.ext} ${this._path}`
