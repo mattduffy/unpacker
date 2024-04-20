@@ -243,7 +243,7 @@ describe('successfully unpack some archives', { timeout: 5000 }, () => {
     assert.match(result.destination, re)
   })
 
-  it('should unpack and move a .rar file', async () => {
+  it(`should unpack and move a .rar file: ${rar}`, async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(rar)
     const result = await unpacker.unpack(destination)
@@ -253,7 +253,7 @@ describe('successfully unpack some archives', { timeout: 5000 }, () => {
     assert.match(result.destination, re)
   })
 
-  it('should unpack and move a single gunzipped file', async () => {
+  it(`should unpack and move a single gunzipped file: ${gz}`, async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(gz)
     const result = await unpacker.unpack(destination)
@@ -261,7 +261,7 @@ describe('successfully unpack some archives', { timeout: 5000 }, () => {
     assert.match(result.destination, re)
   })
 
-  it('should unpack and move a .zip file', async () => {
+  it(`should unpack and move a .zip file: ${tinyZip}`, async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tinyZip)
     const re = new RegExp(`${destination}`)

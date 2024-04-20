@@ -12,6 +12,12 @@ npm install --save @mattduffy/unpacker
 ```javascript
 import { Unpacker } from '@mattduffy/unpacker'
 let unpacker = new Unpacker()
+unpacker = await unpacker.setPath('path/to/archive.tar.gz')
+const extracted = await unpacker.unpack('final/path/to/exracted/files')
+
+// OR a bit more concise
+let unpacker = await new Unpacker().setPath('path/to/archive.tar.gz')
+const extracted = await unpacker.unpack('final/path/to/extracted/files')
 ```
 
 The Unpacker constructor does a litle bit of instance setup, but the important stuff currently happens the first time the `setPath()` method is called.  This is when checks for the locally installed versions of `tar`, `unrar`, `gzip` and `zip` are performed.  Their respective file system paths and version numbers are stored as instance properties.  This happens here rather than the constructor method because it happens asynchronously.  This is an **Async/Await** method.

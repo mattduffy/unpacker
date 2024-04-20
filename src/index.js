@@ -138,7 +138,8 @@ export class Unpacker extends EventEmitter {
       throw new Error(`File basename problem: ${filePath}`)
     }
     log(`setPath: ${this._path}`)
-    return undefined
+    // return undefined
+    return this
   }
 
   /**
@@ -478,28 +479,31 @@ export class Unpacker extends EventEmitter {
     let unpack
     const tarExcludes = '--warning=no-unknown-keyword --exclude=__MACOSX* --exclude=._* --exclude=.git* --exclude=.svn*'
     const tarDirOptions = '--one-top-level --strip-components=1'
+    /*
+     * Because Tar is being called from the the perspective of process.cwd()
+     * (not the directory containing the archive file),
+     * use the --directory=<path/to/archive/file> argument to unpack the archive in-place.
+     */
+    this._changeToDir = `${this._path.slice(0, this._path.lastIndexOf('/'))}/`
+    const tarChangeToDir = `--directory=${this._changeToDir}`
     if (this._isTarFile && !this._isCompressed) {
       // TAR .tar
-      // @TODO add the -C destdir argument to tar command to extract archive into its current directory, not the process.cwd
-      unpack = `${this._tar.path} ${tarExcludes} ${tarDirOptions} -xf ${this._path}`
+      unpack = `${this._tar.path} ${tarExcludes} ${tarDirOptions} ${tarChangeToDir} -xf ${this._path}`
     // } else if (this._isTarFile && this._isGzipFile) {
     } else if (this._isTarFile && this._isCompressed) {
       // Compressed TAR .tar.gz or .tgz
-      // @TODO add the -C destdir argument to tar command to extract archive into its current directory, not the process.cwd
-      unpack = `${this._tar.path} ${tarExcludes} ${tarDirOptions} -xzf ${this._path}`
+      unpack = `${this._tar.path} ${tarExcludes} ${tarDirOptions} ${tarChangeToDir} -xzf ${this._path}`
     } else if (this._isGzipFile && this._isCompressed) {
       // GZIP file is probably a .gz
-      // unpack = `${this._gzip.path} --decompress --keep --suffix ${this._file.ext} ${this._path}`
       unpack = `${this._gzip.path} --decompress --force --keep --suffix ${this._file.ext} ${this._path}`
     } else if (this._isZipFile) {
       // ZIP .zip
       const zipExcludes = '-x \'__MACOSX*\''
-      // unpack = `${this._unzip.path} ${this._path} ${zipExcludes}`
-      unpack = `${this._unzip.path} -o ${this._path} ${zipExcludes}`
+      const zipExtractDir = `-d ${this._changeToDir}`
+      unpack = `${this._unzip.path} -o ${this._path} ${zipExcludes} ${zipExtractDir}`
     } else if (this._isRarFile) {
       // RAR .rar
-      // unpack = `${this._unrar.path} x ${this._path}`
-      unpack = `${this._unrar.path} e -ad ${this._path}`
+      unpack = `${this._unrar.path} e -ad ${this._path} ${this._changeToDir}`
     } else {
       error(`this._isTarFile: ${this._isTarFile} (compressed? ${this._isCompressed}`)
       error(`this._isRarFile: ${this._isRarFile}`)
@@ -527,14 +531,20 @@ export class Unpacker extends EventEmitter {
       throw new Error('Failed trying to move unpacked file(s)', { cause })
     }
     try {
-      if (this._isTarFile || this._isRarFile || this._isZipFile) {
-        this._tempDir = `${this._cwd}/${this._fileBasename}`
+      // if (this._isTarFile || this._isRarFile || this._isZipFile) {
+      if (this._isTarFile || this._isRarFile) {
+        this._tempDir = `${this._changeToDir}${this._fileBasename}`
+      } else if (this._isZipFile) {
+        // ZIP file
+        this._tempDir = `${this._changeToDir}${this._fileBasename}`
       } else {
         // Gzip files extract into the directory they are in, not into
         // the process.cwd context of the excuting script.
         this._tempDir = `${this._file.dir}/${this._fileBasename}`
       }
-      log(`tempDir: ${this._tempDir}`)
+      log(`tempDir:           ${this._tempDir}`)
+      log(`destination:       ${destination}${this._fileBasename}`)
+      log(`this._destination: ${nodePath.resolve(this._destination, this._fileBasename)}`)
       stats = await fs.stat(this._tempDir)
       if (stats.isDirectory()) {
         result.unpacked = true
@@ -566,16 +576,19 @@ export class Unpacker extends EventEmitter {
         result.finalPath = `${destination}${this._fileBasename}`
       }
       log('move opts: ', options)
-      const move = await this.mv(this._tempDir, destination, options)
-      log('did the mv command work?', move)
+      if (this._tempDir !== `${destination}${this._fileBasename}`) {
+        const move = await this.mv(this._tempDir, destination, options)
+        log('did the mv command work?', move)
+      }
       log('result contents: ', result)
       log('about to call mv with:')
       log(`result._tempDir: ${this._tempDir}`)
       log(`destination: ${destination}`)
     } catch (e) {
       error(e)
-      const cause = new Error(`Error ocurred trying to move ${this._tempDir} to ${destination}`)
-      throw new Error(e, { cause })
+      const msg = `Error ocurred trying to move ${this._tempDir} to ${destination}`
+      // const cause = new Error(`Error ocurred trying to move ${this._tempDir} to ${destination}`)
+      throw new Error(msg, { cause: e })
     }
     try {
       await this.cleanup('__MACOSX')
