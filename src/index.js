@@ -33,11 +33,13 @@ const DIRECTORY = 'inode/directory'
 export class Unpacker extends EventEmitter {
   /**
    * Create an instance of Unpacker.
-   * @param { string } pathToArchiveFile - String value of a file system path to an uploaded archive to unpack.
+   * @param { Object } config - An object literal containing configuartion properties.
+   * @param { Boolean } [config.flatten = false] - If TRUE, flatten directory structure of extracted archive.
    */
-  constructor(pathToArchiveFile) {
+  constructor(/* pathToArchiveFile */ config = {}) {
+    _log(config)
     super()
-    this._path = pathToArchiveFile ?? null
+    // this._path = pathToArchiveFile ?? null
     this._file = null
     this._fileBasename = null
     this._fileExt = null
@@ -52,6 +54,7 @@ export class Unpacker extends EventEmitter {
     this._unrar = null
     this._gzip = null
     this._unzip = null
+    this._flatten = config?.flatten ?? false
     this._cwd = process.cwd()
     this.__dirname = __dirname
     this._platform = process.platform
@@ -477,8 +480,6 @@ export class Unpacker extends EventEmitter {
       throw new Error(`Archive is ${this._mimetype}, but can't find unrar executable.`)
     }
     let unpack
-    const tarExcludes = '--warning=no-unknown-keyword --exclude=__MACOSX* --exclude=._* --exclude=.git* --exclude=.svn*'
-    const tarDirOptions = '--one-top-level --strip-components=1'
     /*
      * Because Tar is being called from the the perspective of process.cwd()
      * (not the directory containing the archive file),
@@ -486,24 +487,53 @@ export class Unpacker extends EventEmitter {
      */
     this._changeToDir = `${this._path.slice(0, this._path.lastIndexOf('/'))}/`
     const tarChangeToDir = `--directory=${this._changeToDir}`
+    // const tarDirOptions = `--one-top-level --strip-components=1 --show-transformed-names`
+    let tarDirOptions
+    if (this._flatten) {
+      const l = await this.list()
+      const n = l.list.reduce((a, c) => {
+        const x = c.slice(-1) === '/' ? 1 : 0
+        return a + x
+      }, 0)
+      tarDirOptions = `--one-top-level --strip-components=${n} --show-transformed-names`
+    }
+    const tarExcludes = '--warning=no-unknown-keyword --exclude=__MACOSX* --exclude=._* --exclude=*.DS_Store --exclude-vcs'
     if (this._isTarFile && !this._isCompressed) {
       // TAR .tar
-      unpack = `${this._tar.path} ${tarExcludes} ${tarDirOptions} ${tarChangeToDir} -xf ${this._path}`
+      if (this._flatten) {
+        unpack = `${this._tar.path} ${tarChangeToDir} ${tarExcludes} ${tarDirOptions} -xf ${this._path}`
+      } else {
+        unpack = `${this._tar.path} ${tarChangeToDir} ${tarExcludes} -xf ${this._path}`
+      }
     // } else if (this._isTarFile && this._isGzipFile) {
     } else if (this._isTarFile && this._isCompressed) {
+      log(await this.list())
       // Compressed TAR .tar.gz or .tgz
-      unpack = `${this._tar.path} ${tarExcludes} ${tarDirOptions} ${tarChangeToDir} -xzf ${this._path}`
+      if (this._flatten) {
+        unpack = `${this._tar.path} ${tarChangeToDir} ${tarExcludes} ${tarDirOptions} -xzf ${this._path}`
+      } else {
+        unpack = `${this._tar.path} ${tarChangeToDir} ${tarExcludes} -xzf ${this._path}`
+      }
     } else if (this._isGzipFile && this._isCompressed) {
       // GZIP file is probably a .gz
       unpack = `${this._gzip.path} --decompress --force --keep --suffix ${this._file.ext} ${this._path}`
     } else if (this._isZipFile) {
       // ZIP .zip
-      const zipExcludes = '-x \'__MACOSX*\''
+      const zipExcludes = '-x __MACOSX* -x **.DS_Store'
       const zipExtractDir = `-d ${this._changeToDir}`
-      unpack = `${this._unzip.path} -o ${this._path} ${zipExcludes} ${zipExtractDir}`
+      const zipJunkPath = '-j'
+      if (this._flatten) {
+        unpack = `${this._unzip.path} ${zipJunkPath} -o ${this._path} ${zipExcludes} ${zipExtractDir}`
+      } else {
+        unpack = `${this._unzip.path} -o ${this._path} ${zipExcludes} ${zipExtractDir}`
+      }
     } else if (this._isRarFile) {
       // RAR .rar
-      unpack = `${this._unrar.path} e -ad ${this._path} ${this._changeToDir}`
+      if (this._flatten) {
+        unpack = `${this._unrar.path} e -ep -ad ${this._path} ${this._changeToDir}`
+      } else {
+        unpack = `${this._unrar.path} e -ad ${this._path} ${this._changeToDir}`
+      }
     } else {
       error(`this._isTarFile: ${this._isTarFile} (compressed? ${this._isCompressed}`)
       error(`this._isRarFile: ${this._isRarFile}`)
@@ -726,6 +756,21 @@ export class Unpacker extends EventEmitter {
   }
 
   /**
+   * Flatten the directory structure of extracted archive to just one 1 level deep.
+   * @summary Flatten the directory structure of extracted archive to just one 1 level deep.
+   * @author Matthew Duffy <mattduffy@gmail.com>
+   * @param { Boolean } [flattenDirs=false] - If TRUE, then flatten extracted directory structure.
+   * @return { undefined }
+   */
+  flatten(flattenDirs = false) {
+    if (flattenDirs) {
+      this._flatten = true
+    } else {
+      this._flatten = false
+    }
+  }
+
+  /**
    * List the contents of a Tar file.
    * @summary List the contents of a Tar file.
    * @author Matthew Duffy <mattduffy@gmail.com>
@@ -776,7 +821,8 @@ export class Unpacker extends EventEmitter {
     log(tarFile)
     const o = {}
     try {
-      const excludes = '--exclude=__MACOSX --exclude=._* --exclude=.svn --exclude=.git*'
+      // const excludes = '--exclude=__MACOSX --exclude=._* --exclude=.svn --exclude=.git*'
+      const excludes = '--warning=no-unknown-keyword --exclude=__MACOSX* --exclude=._* --exclude=*.DS_Store --exclude-vcs'
       const tar = `tar ${excludes} --list ${(this._isCompressed ? '-z' : '')} -f`
       log(`cmd: ${tar} ${tarFile}`)
       o.cmd = `${tar} ${tarFile}`

@@ -112,6 +112,17 @@ console.log(list)
 // }
 ```
 
+Sometimes it is desireable to extract an archive into a directory, one level deep, but the archive contains nested directories.  Unpacker can flatten out the resulting files with the `flatten({Boolean})` method.  Calling this method with a argument of __true__ enables directory flattening mode.  Calling it with __false__ disables directory flattening mode.  Alternatively, an object literal can be passed to the constructor method to set flatten mode.
+```javascript
+// config object passed to the constructor
+const unpacker = new Unpacker({flatten: true})
+await unpacker.setPath('uploads/multi-level-dir.tar.gz')
+// OR
+const unpacker = new Unpacker()
+unpacker.flatten(true)
+await unpacker.setPath('uploads/multi-level-dir.rar')
+```
+
 If there are problems with the unpacking process, the method will throw an error.  Upon successful unpacking and moving files to the target destination, the Unpacker instance will make an effort to clean up the weird artifacts that may have been created (like "dot" hidden resource folders `.myPhotos` or \__MACOSX ).
 
 On **POSIX** platforms that include a version of the `mv` command that supports the `--backup=[option]` argument, a backup is automatically created if there is already a file or directory at the target destination with the same name.  For example, if `/www/app/static/albums/myPhotos/` already exists when `myPhotos.tar.gz` is unpacked with `unpacker.unpack('/www/app/static/albums')` then the original directory will be renamed `/www/app/static/albums/myPhotos.~n~` where **n** is an auto-incrementing integer, starting at 1.

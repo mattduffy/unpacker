@@ -16,6 +16,7 @@ const gz = `${__dirname}/test/singleton.jpg.gz`
 const rar = `${__dirname}/test/marquetryRAR.rar`
 const tar = `${__dirname}/test/marquetry.tar`
 const tarGz = `${__dirname}/test/marquetry.tar.gz`
+const tarGzDirs = `${__dirname}/test/poofer-box-dirs.tar.gz`
 const tarball = `${__dirname}/test/marquetry.tgz`
 const badPath = `${__dirname}/test/missingfile.tar.gz`
 const destination = `${__dirname}/test/static/albums`
@@ -203,7 +204,7 @@ describe('successfully list the contents of the archive file', { timeout: 5000 }
     assert.ok(list.length >= 1)
   })
 
-  it(`should correctly list the contents of ${gz}l file`, skip, async () => {
+  it(`should correctly list the contents of ${gz} file`, skip, async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(gz)
     const { list } = await unpacker.list()
@@ -233,7 +234,7 @@ describe('successfully unpack some archives', { timeout: 5000 }, () => {
     debug('end of after method.')
   })
 
-  it(`should unpack and move ${tarGz} to ${destination}`, async () => {
+  it(`should unpack and \nmove ${tarGz} \n  to ${destination}`, async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tarGz)
     const result = await unpacker.unpack(destination)
@@ -243,7 +244,7 @@ describe('successfully unpack some archives', { timeout: 5000 }, () => {
     assert.match(result.destination, re)
   })
 
-  it(`should unpack and move a .rar file: ${rar}`, async () => {
+  it(`should unpack and \nmove ${rar} \n  to ${destination}`, async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(rar)
     const result = await unpacker.unpack(destination)
@@ -253,7 +254,7 @@ describe('successfully unpack some archives', { timeout: 5000 }, () => {
     assert.match(result.destination, re)
   })
 
-  it(`should unpack and move a single gunzipped file: ${gz}`, async () => {
+  it(`should unpack a single gunzipped file and \nmove ${gz} \n  to ${destination}`, async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(gz)
     const result = await unpacker.unpack(destination)
@@ -261,7 +262,7 @@ describe('successfully unpack some archives', { timeout: 5000 }, () => {
     assert.match(result.destination, re)
   })
 
-  it(`should unpack and move a .zip file: ${tinyZip}`, async () => {
+  it(`should unpack a .zip file and \nmove ${tinyZip} \n  to ${destination}`, async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tinyZip)
     const re = new RegExp(`${destination}`)
@@ -275,5 +276,12 @@ describe('successfully unpack some archives', { timeout: 5000 }, () => {
     const re = new RegExp(`${renamedDest}`)
     const result = await unpacker.unpack(destination, {}, { rename: true, newName: renamedDest })
     assert.match(result.finalPath, re)
+  })
+
+  it('should flatten the directory structure of archive into a single extracted directory.', async () => {
+    const unpacker = new Unpacker({ flatten: true })
+    await unpacker.setPath(tarGzDirs)
+    const result = await unpacker.unpack(destination)
+    assert.ok(result.unpacked)
   })
 })
