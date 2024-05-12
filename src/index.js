@@ -465,7 +465,10 @@ export class Unpacker extends EventEmitter {
     const error = _error.extend('unpack')
     this._destination = moveTo
     let destination = moveTo ?? '.'
-    const options = { force: true, backup: 'numbered', ...opts }
+    let options = { force: true, backup: 'numbered' }
+    if (opts) {
+      options = { ...opts }
+    }
     log(`process.platform: ${this._platform}`)
     if (this._platform === 'darwin') {
       options.backup = false
@@ -587,15 +590,18 @@ export class Unpacker extends EventEmitter {
         /* eslint-disable-next-line no-useless-escape */
         destination += `${this._fileBasename.replace(/^(\w+?[^\.]*)((\.?)\w+)?$/, '$1')}/`
       }
+      log('rename set? ', rename)
       if (rename?.rename) {
         log(`renaming ${this._file.name} -> ${rename.newName}`)
         try {
           const renamed = await this.rename(this._tempDir, rename.newName)
+          log(renamed)
           this._file.name = rename.newName
           result.destination = renamed.destination
           result.command = renamed.command
           result.cwd = renamed.destination
-          result.finalPath = renamed.destination
+          result.finalPath = `${destination}/${rename.newName}`
+          // result.finalPath = null // renamed.destination
         } catch (e) {
           error(e)
           throw new Error('Failed to rename desintation.', { cause: e })
@@ -605,15 +611,17 @@ export class Unpacker extends EventEmitter {
         // result.finalPath = `${destination}${this._file.name}`
         result.finalPath = `${destination}${this._fileBasename}`
       }
+      log(result)
       log('move opts: ', options)
       if (this._tempDir !== `${destination}${this._fileBasename}`) {
+        log(`final move destination: ${destination}${this._fileBasename}`)
+        log(this._tempDir, ' ', destination)
         const move = await this.mv(this._tempDir, destination, options)
         log('did the mv command work?', move)
+        // result.finalPath = destination
+        result.finalPath = `${destination}${this._fileBasename}`
       }
       log('result contents: ', result)
-      log('about to call mv with:')
-      log(`result._tempDir: ${this._tempDir}`)
-      log(`destination: ${destination}`)
     } catch (e) {
       error(e)
       const msg = `Error ocurred trying to move ${this._tempDir} to ${destination}`
