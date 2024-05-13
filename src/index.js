@@ -601,6 +601,7 @@ export class Unpacker extends EventEmitter {
           result.command = renamed.command
           result.cwd = renamed.destination
           result.finalPath = `${destination}/${rename.newName}`
+          this._fileBasename = rename.newName
           // result.finalPath = null // renamed.destination
         } catch (e) {
           error(e)
