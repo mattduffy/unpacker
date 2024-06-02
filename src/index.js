@@ -546,7 +546,6 @@ export class Unpacker extends EventEmitter {
     }
     let result
     let stats
-    // let tempDir
     destination = nodePath.resolve(destination)
     /* eslint-disable-next-line no-useless-escape */
     destination = destination.replace(/(.*[^\/])$/, '$1/')
@@ -575,6 +574,7 @@ export class Unpacker extends EventEmitter {
         // the process.cwd context of the excuting script.
         this._tempDir = `${this._file.dir}/${this._fileBasename}`
       }
+      log(`fileBasename:      ${this._fileBasename}`)
       log(`tempDir:           ${this._tempDir}`)
       log(`destination:       ${destination}${this._fileBasename}`)
       log(`this._destination: ${nodePath.resolve(this._destination, this._fileBasename)}`)
@@ -590,8 +590,7 @@ export class Unpacker extends EventEmitter {
         /* eslint-disable-next-line no-useless-escape */
         destination += `${this._fileBasename.replace(/^(\w+?[^\.]*)((\.?)\w+)?$/, '$1')}/`
       }
-      log('rename set? ', rename)
-      if (rename?.rename) {
+      if (rename?.rename && rename.newName !== this._fileBasename) {
         log(`renaming ${this._file.name} -> ${rename.newName}`)
         try {
           const renamed = await this.rename(this._tempDir, rename.newName)

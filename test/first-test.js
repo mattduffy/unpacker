@@ -274,7 +274,7 @@ describe('successfully unpack some archives', { timeout: 5000 }, () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tarball)
     const re = new RegExp(`${renamedDest}`)
-    const result = await unpacker.unpack(destination, {}, { rename: true, newName: renamedDest })
+    const result = await unpacker.unpack(destination, null, { rename: true, newName: renamedDest })
     assert.match(result.finalPath, re)
   })
 
