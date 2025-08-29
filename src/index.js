@@ -16,6 +16,7 @@ const __dirname = nodePath.dirname(__filename)
 const cmd = promisify(exec)
 const _log = Debug('unpacker:class:LOG')
 const _error = Debug('unpacker:class:ERROR')
+const XZ = 'application/x-xz'
 const RAR = 'application/x-rar'
 const TAR = 'application/x-tar'
 const ZIP = 'application/zip'
@@ -34,7 +35,8 @@ export class Unpacker extends EventEmitter {
   /**
    * Create an instance of Unpacker.
    * @param { Object } config - An object literal containing configuartion properties.
-   * @param { Boolean } [config.flatten = false] - If TRUE, flatten directory structure of extracted archive.
+   * @param { Boolean } [config.flatten = false] - If TRUE, flatten directory structure of
+   *                                             extracted archive.
    */
   constructor(/* pathToArchiveFile */ config = {}) {
     _log(config)
@@ -49,8 +51,10 @@ export class Unpacker extends EventEmitter {
     this._isRarFile = false
     this._isGzipFile = false
     this._isZipFile = false
+    this._isXzFile = false
     this._isCompressed = false
     this._tar = null
+    this._xz = null
     this._unrar = null
     this._gzip = null
     this._unzip = null
@@ -84,6 +88,13 @@ export class Unpacker extends EventEmitter {
     const error = _error.extend('setPath')
     if (!filePath) {
       throw new Error('Missing required path argument.')
+    }
+    try {
+      if (this._xz === null) {
+        await this.whichXz()
+      }
+    } catch (e) {
+      throw new Error('Failed to find xz.')
     }
     try {
       if (this._tar === null) {
@@ -172,7 +183,15 @@ export class Unpacker extends EventEmitter {
       const mime = result.stdout.trim()
       log(result)
       log(`${file}: ${mime}`)
+      log('what is XZ?', XZ)
+      log('mime', mime)
+      log('  XZ', XZ)
       switch (result.stdout.trim()) {
+        // case XZ:
+        case 'application/x-xz':
+          log('setting mimetype to ', XZ)
+          this._mimetype = XZ
+          break
         case TAR:
           this._mimetype = TAR
           break
@@ -209,13 +228,27 @@ export class Unpacker extends EventEmitter {
   setExtension(file = this._file) {
     const log = _log.extend('setExtension')
     const error = _error.extend('setExtension')
-    // const ext = /\.*(\.(t(ar)?(\.?gz)?)|(rar)?|(zip)?|(gz)?)$/.exec(file)
-    const ext = /\.*(?<tar>\.tar$)|(\.(?<tgz>t(?:ar)?(\.?gz)?)|(?<rar>\.rar)|(?<zip>\.zip)?|(?<gz>\.gz)?)$/.exec(file)
+    /* eslint-disable */
+    const tgzReg = String.raw`((?<tgz>\.t(?:ar)?(\.?gz)))`
+    const txzReg = String.raw`((?<txz>\.t(?:ar)?(\.?xz)))`
+    const xzReg =  String.raw`(?<xz>\.xz)`
+    const rarReg = String.raw`(?<rar>\.rar)`
+    const zipReg = String.raw`(?<zip>\.zip)`
+    const gzReg =  String.raw`(?<gz>\.gz)`
+    const tarReg = String.raw`(?<tar>\.tar)`
+    const wholeReg = String.raw `\.*`
+      + `${xzReg}|${rarReg}|${zipReg}|${gzReg}|${tgzReg}|${txzReg}|${tarReg}`
+      + `$`
+    const extReg = new RegExp(wholeReg)
+    log('        wholeReg  /%s/', wholeReg)
+    log(' extReg.valueOf()', extReg.valueOf())
+    log('extReg.toString()', extReg.toString())
+    const ext = extReg.exec(file)
+    /* eslint-enable */
     if (ext === null) {
       error(`${file} does not look like an compressed archive file.`)
       throw new Error(`File ${file} does not look like a (compressed) archive file.`)
     }
-    // log(`file extension: ${ext[0]}`)
     log('file extension matches: ', ext?.groups)
     // if (['.tar.gz', '.tgz'].includes(ext[0])) {
     if (ext.groups.tgz && !ext.groups.gz) {
@@ -232,14 +265,25 @@ export class Unpacker extends EventEmitter {
       this._isCompressed = true
       this._isZipFile = true
     // } else if (this._mimetype === GZIP) {
-    } else if (this._mimetype === GZIP && ext.groups.gz && !ext.groups.tar && !ext.groups.tgz) {
+    } else if (this._mimetype === GZIP
+      && ext.groups.gz
+      && !ext.groups.tar
+      && !ext.groups.tgz) {
       this._isCompressed = true
       this._isGzipFile = true
     // } else if (this._mimetype === RAR) {
     } else if (this._mimetype === RAR && ext.groups.rar) {
       this._isCompressed = false
       this._isRarFile = true
+    } else if (this._mimetype === XZ && ext.groups.xz) {
+      this._isCompressed = true
+      this._isXzFile = true
+    } else if (this._mimetype === XZ && ext.groups.txz) {
+      this._isCompressed = true
+      this._isXzFile = true
     } else {
+      log('what is this._mimetype', this._mimetype, XZ)
+      log('ext.groups', ext.groups)
       throw new Error(`File ${file} does not look like a (compressed) archive file.`)
     }
     [this._fileExt] = ext
@@ -280,6 +324,45 @@ export class Unpacker extends EventEmitter {
   }
 
   /**
+   * Find the location of the xz executable.
+   * @summary Find the location of the xz executable.
+   * @author Matthew Duffy <mattduffy@gmail.com>
+   * @async
+   * @thows { Error } Throws an error if search for xz fails.
+   * @return { undefined } Returns undefined if no error is encountered.
+   */
+  async whichXz() {
+    const log = _log.extend('whichXz')
+    const error = _error.extend('whichXz')
+    const xz = { path: null, version: null }
+    try {
+      let path = await cmd('which xz')
+      path = path.stdout.trim()
+      if (!/xz/.test(path)) {
+        this._xz = false
+        return
+      }
+      xz.path = path
+    } catch (e) {
+      error(e)
+      throw new Error(e)
+    }
+    try {
+      /* eslint-disable no-useless-escape */
+      const cmdString = `${xz.path} `
+        + "--version | awk '/([0-9]+\.[0-9]+\.[0-9]+)$/ { print $4; exit }'"
+      /* eslint-enable no-useless-escape */
+      const version = await cmd(cmdString)
+      xz.version = version.stdout.trim()
+    } catch (e) {
+      error(e)
+      throw new Error(e)
+    }
+    this._xz = xz
+    log(`which xz -> ${this._xz.path}`)
+  }
+
+  /**
    * Find the location of the tar executable.
    * @summary Find the location of the tar executable.
    * @author Matthew Duffy <mattduffy@gmail.com>
@@ -305,7 +388,8 @@ export class Unpacker extends EventEmitter {
     }
     try {
       /* eslint-disable-next-line no-useless-escape */
-      const version = await cmd(`${tar.path} --version | awk '/([0-9]\.[0-9]+)$/ { print $NF}'`)
+      const cmdString = `${tar.path} --version | awk '/([0-9]\.[0-9]+)$/ { print $NF}'`
+      const version = await cmd(cmdString)
       tar.version = version.stdout.trim()
     } catch (e) {
       error(e)
@@ -376,7 +460,8 @@ export class Unpacker extends EventEmitter {
     }
     try {
       /* eslint-disable-next-line no-useless-escape */
-      const version = await cmd(`${gzip.path} --version | awk '/([0-9]+\.[0-9]+)$/ { print $NF }'`)
+      const cmdString = `${gzip.path} --version | awk '/([0-9]+\.[0-9]+)$/ { print $NF }'`
+      const version = await cmd(cmdString)
       gzip.version = version.stdout.trim()
     } catch (e) {
       error(e)
@@ -412,7 +497,8 @@ export class Unpacker extends EventEmitter {
     }
     try {
       /* eslint-disable-next-line no-useless-escape */
-      const version = await cmd(`${unzip.path} -v | awk '/^[Uu]n[Zz]ip ([0-9]+\.[0-9]+)/ { print $2 }'`)
+      const cmdString = `${unzip.path} -v | awk '/^[Uu]n[Zz]ip ([0-9]+\.[0-9]+)/ { print $2 }'`
+      const version = await cmd(cmdString)
       unzip.version = version.stdout.trim()
     } catch (e) {
       error(e)
@@ -423,8 +509,8 @@ export class Unpacker extends EventEmitter {
   }
 
   /**
-   * Check for the presence of usable versions of tar, unrar and gzip.
-   * @summary Check for the presence of usuable versions of tar, unrar and gzip.
+   * Check for the presence of usable versions of tar, xz, unrar and gzip.
+   * @summary Check for the presence of usuable versions of tar, xz, unrar and gzip.
    * @author Matthew Duffy <mattduffy@gmail.com>
    * @async
    * @return { Object } An object literal with success or error messages.
@@ -442,21 +528,33 @@ export class Unpacker extends EventEmitter {
     if (this._unzip === null) {
       await this.whichUnzip()
     }
-    return { tar: this._tar, unrar: this._unrar, gzip: this._gzip, unzip: this._unzip }
+    if (this._xz === null) {
+      await this.whichXz()
+    }
+    return {
+      tar: this._tar,
+      unrar: this._unrar,
+      gzip: this._gzip,
+      unzip: this._unzip,
+      xz: this._xz,
+    }
   }
 
   /**
-   * Unpack the archive file.  The archive file may be one of these file formats: .tar, .tar.gz, .tgz, .zip, or .gzip.
-   * The contents of the archive are extracted into a folder, named after the archive, in its current directory.
-   * @summary Extract the contents of the archive into a directory, with the name of the archive.
+   * Unpack the archive file.  The archive file may be one of these file formats: .tar,
+   * .tar.gz, .tgz, .tar.xz, .txz, .xz, .zip, or .gzip.  The contents of the archive are
+   * extracted into a folder, named after the archive, in its current directory.
+   * @summary Extract the contents of the archive into a directory, with the name of the
+   *          archive.
    * @author Matthew Duffy <mattduffy@gmail.com>
    * @async
    * @param { string } moveTo - A file system location to move the unpacked archive to.
    * @param { Object } opts - An object literal with options for mv command.
-   * @param { string } opts.backup - Tell mv command whether or not to backup existing destination path, if supported.
-   * @param { Object } rename - An object literal with new name for destination directory.
-   * @param { boolean } rename.rename - Should the destination directory be renamed.
-   * @param { string } rename.newName - Destination renamed to this.
+   * @param { string } opts.backup - Tell mv command whether or not to backup existing
+   *                                 destination path, if supported.
+   * @param { Object } [rename] - An object literal with new name for destination directory.
+   * @param { boolean } [rename.rename] - Should the destination directory be renamed.
+   * @param { string } [rename.newName] - Destination renamed to this.
    * @throws { Error } Throws an error if the archive could not be unpacked.
    * @return { Object } An object literal with success or error messages.
    */
@@ -475,6 +573,9 @@ export class Unpacker extends EventEmitter {
     }
     if (this._tar === null && this._mimetype === TAR) {
       throw new Error(`Archive is ${this._mimetype}, but can't find tar executable.`)
+    }
+    if (this._xz === null && this._mimetype === XZ) {
+      throw new Error(`Archive is ${this._mimetype}, but can't find xz executable.`)
     }
     if (this.gzip === null && this._mimetype === GZIP) {
       throw new Error(`Archive is ${this._mimetype}, but can't find gzip executable.`)
@@ -500,11 +601,13 @@ export class Unpacker extends EventEmitter {
       }, 0)
       tarDirOptions = `--one-top-level --strip-components=${n} --show-transformed-names`
     }
-    const tarExcludes = '--warning=no-unknown-keyword --exclude=__MACOSX* --exclude=._* --exclude=*.DS_Store --exclude-vcs'
+    const tarExcludes = '--warning=no-unknown-keyword --exclude=__MACOSX* --exclude=._* '
+      + '--exclude=*.DS_Store --exclude-vcs'
     if (this._isTarFile && !this._isCompressed) {
       // TAR .tar
       if (this._flatten) {
-        unpack = `${this._tar.path} ${tarChangeToDir} ${tarExcludes} ${tarDirOptions} -xf ${this._path}`
+        unpack = `${this._tar.path} ${tarChangeToDir} ${tarExcludes} ${tarDirOptions} `
+          + `-xf ${this._path}`
       } else {
         unpack = `${this._tar.path} ${tarChangeToDir} ${tarExcludes} -xf ${this._path}`
       }
@@ -513,20 +616,23 @@ export class Unpacker extends EventEmitter {
       log(await this.list())
       // Compressed TAR .tar.gz or .tgz
       if (this._flatten) {
-        unpack = `${this._tar.path} ${tarChangeToDir} ${tarExcludes} ${tarDirOptions} -xzf ${this._path}`
+        unpack = `${this._tar.path} ${tarChangeToDir} ${tarExcludes} ${tarDirOptions} `
+          + `-xzf ${this._path}`
       } else {
         unpack = `${this._tar.path} ${tarChangeToDir} ${tarExcludes} -xzf ${this._path}`
       }
     } else if (this._isGzipFile && this._isCompressed) {
       // GZIP file is probably a .gz
-      unpack = `${this._gzip.path} --decompress --force --keep --suffix ${this._file.ext} ${this._path}`
+      unpack = `${this._gzip.path} --decompress --force --keep --suffix ${this._file.ext} `
+        + `${this._path}`
     } else if (this._isZipFile) {
       // ZIP .zip
       const zipExcludes = '-x __MACOSX* -x **.DS_Store'
       const zipExtractDir = `-d ${this._changeToDir}`
       const zipJunkPath = '-j'
       if (this._flatten) {
-        unpack = `${this._unzip.path} ${zipJunkPath} -o ${this._path} ${zipExcludes} ${zipExtractDir}`
+        unpack = `${this._unzip.path} ${zipJunkPath} -o ${this._path} ${zipExcludes} `
+          + `${zipExtractDir}`
       } else {
         unpack = `${this._unzip.path} -o ${this._path} ${zipExcludes} ${zipExtractDir}`
       }
@@ -625,7 +731,6 @@ export class Unpacker extends EventEmitter {
     } catch (e) {
       error(e)
       const msg = `Error ocurred trying to move ${this._tempDir} to ${destination}`
-      // const cause = new Error(`Error ocurred trying to move ${this._tempDir} to ${destination}`)
       throw new Error(msg, { cause: e })
     }
     try {
@@ -647,8 +752,10 @@ export class Unpacker extends EventEmitter {
    * @param { string } oldPath - The original name.
    * @param { string } newPath - the new name to be used.
    * @param { Object } options - Object literal with command line options for the mv command.
-   * @param { boolean } options.force - Whether to cause mv command to overwrite an existing destination path.
-   * @param { string } optsions.backup - Tell mv command whether or not to backup existing destination path, if supported.
+   * @param { boolean } options.force - Whether to cause mv command to overwrite an existing
+   *                                    destination path.
+   * @param { string } optsions.backup - Tell mv command whether or not to backup existing
+   *                                     destination path, if supported.
    * @throw { Error }
    * @return { boolean } True if rename operation was successful.
    */
@@ -682,7 +789,9 @@ export class Unpacker extends EventEmitter {
       const splitDestination = oldPath.split('/')
       splitDestination.splice(-1, 1, newPath)
       const renamedDestination = splitDestination.join('/')
-      const mv = `mv ${(opts.force ? '-f' : '')} ${(opts.backup === 'numbered' ? '--backup=numbered' : '')} ${fullDestination} ${renamedDestination}`
+      const mv = `mv ${(opts.force ? '-f' : '')} `
+        + `${(opts.backup === 'numbered' ? '--backup=numbered' : '')} `
+        + `${fullDestination} ${renamedDestination}`
       log(`mv: ${mv}`)
       result = await cmd(mv)
       result.command = mv
@@ -705,7 +814,8 @@ export class Unpacker extends EventEmitter {
    * @param { string } source - The directory to move.
    * @param { string } destination - The file system location to move the archive contents.
    * @param { Object } options - Object literal with options for mv command.
-   * @param { boolean } options.makeDir - Boolean controlling if parent dirs need to be created.
+   * @param { boolean } options.makeDir - Boolean controlling if parent dirs need to be
+   *                                      created.
    * @throws { Error } Throws an error if the contents cannot be moved.
    * @return { boolean } True if move is successful.
    */
@@ -745,7 +855,9 @@ export class Unpacker extends EventEmitter {
         error(`Destination already exists, no over-writing:  ${destination}`)
         throw new Error(`Destination already exists, no over-writing:  ${destination}`)
       }
-      const mv = `mv ${(opts.force ? '-f' : '')} ${(opts.backup === 'numbered' ? '--backup=numbered' : '')} ${source} ${destination}`
+      const mv = `mv ${(opts.force ? '-f' : '')} `
+        + `${(opts.backup === 'numbered' ? '--backup=numbered' : '')} `
+        + `${source} ${destination}`
       log(`mv: ${mv}`)
       const result = await cmd(mv)
       log(result)
@@ -767,7 +879,8 @@ export class Unpacker extends EventEmitter {
    * Flatten the directory structure of extracted archive to just one 1 level deep.
    * @summary Flatten the directory structure of extracted archive to just one 1 level deep.
    * @author Matthew Duffy <mattduffy@gmail.com>
-   * @param { Boolean } [flattenDirs=false] - If TRUE, then flatten extracted directory structure.
+   * @param { Boolean } [flattenDirs=false] - If TRUE, then flatten extracted directory
+   *                                          structure.
    * @return { undefined }
    */
   flatten(flattenDirs = false) {
@@ -796,6 +909,12 @@ export class Unpacker extends EventEmitter {
       if (this._isTarFile) {
         list = this.tar_t(file)
       }
+      if (this._isXzFile && this._isCompressed) {
+        list = this.tar_t(file, 'xz')
+      }
+      if (this._isXzFile && !this.isCompressed) {
+        list = this.xz_list(file)
+      }
       if (this._isRarFile) {
         list = this.unrar_lb(file)
       }
@@ -820,18 +939,24 @@ export class Unpacker extends EventEmitter {
    * @author Matthew Duffy <mattduffy@gmail.com>
    * @async
    * @param { string } tarFile - A string containing the name of the Tar file.
+   * @param { string } [type=tar] - Type of file, either tar (default) or xz.
    * @throws { Error } Throws an error if the contents of the Tar file cannot be listed.
    * @return { Object[] } An object literal with an array of the file names.
    */
-  async tar_t(tarFile = this._path) {
+  async tar_t(tarFile = this._path, type = 'tar') {
     const log = _log.extend('tar_t')
     const error = _error.extend('tar_t')
     log(tarFile)
     const o = {}
     try {
-      // const excludes = '--exclude=__MACOSX --exclude=._* --exclude=.svn --exclude=.git*'
-      const excludes = '--warning=no-unknown-keyword --exclude=__MACOSX* --exclude=._* --exclude=*.DS_Store --exclude-vcs'
-      const tar = `tar ${excludes} --list ${(this._isCompressed ? '-z' : '')} -f`
+      const J = (type === 'xz') ? '-J' : ''
+      const excludes = '--warning=no-unknown-keyword '
+        + '--exclude=__MACOSX* '
+        + '--exclude=._* '
+        + '--exclude=*.DS_Store '
+        + '--exclude-vcs'
+      // const tar = `tar ${J} ${excludes} --list ${(this._isCompressed ? '-z' : '')} -f`
+      const tar = `tar ${J} ${excludes} --list -f`
       log(`cmd: ${tar} ${tarFile}`)
       o.cmd = `${tar} ${tarFile}`
       const result = await cmd(`${tar} ${tarFile}`)
@@ -880,7 +1005,8 @@ export class Unpacker extends EventEmitter {
 
   /**
    * List the single file contents of a Gzip file.  Called by the proxy method, list().
-   * @summary List the single file contents of a Gzip file.  Called by the proxy method, list().
+   * @summary List the single file contents of a Gzip file.  Called by the proxy method,
+   *          list().
    * @author Matthew Duffy <mattduffy@gmail.com>
    * @see list
    * @async
@@ -894,7 +1020,7 @@ export class Unpacker extends EventEmitter {
     log(gzFile)
     const o = {}
     try {
-      const gunzip = 'gunzip -l --quiet'
+      const gunzip = 'gunzip --list --quiet'
       log(`cmd: ${gunzip} ${gzFile}`)
       o.cmd = `${gunzip} ${gzFile}`
       const result = await cmd(`${gunzip} ${gzFile}`)
@@ -911,6 +1037,44 @@ export class Unpacker extends EventEmitter {
     } catch (e) {
       error(e)
       throw new Error(`Couldn't Gunzip list the archive contents ${gzFile}`)
+    }
+    return o
+  }
+
+  /**
+   * List the single file contents of an xz file.  Called by the proxy method, list().
+   * @summary List the single file contents of an xz file.  Called by the proxy method,
+   *          list().
+   * @author Matthew Duffy <mattduffy@gmail.com>
+   * @see list
+   * @async
+   * @param { string } xzFile - A string containing the name of the xz file.
+   * @throws { Error } Throws an error if the contents of the Gzip file cannot be listed.
+   * @return { Object } An object literal with the file name.
+   */
+  async xz_list(xzFile = this._file) {
+    const log = _log.extend('xz_list')
+    const error = _error.extend('xz_list')
+    log(xzFile)
+    const o = {}
+    try {
+      const xz = 'xz --list --quiet'
+      log(`cmd: ${xz} ${xzFile}`)
+      o.cmd = `${xz} ${xzFile}`
+      const result = await cmd(`${xz} ${xzFile}`)
+      log(result)
+      const list = result.stdout.trim().split('\n')
+      /* eslint-disable-next-line no-useless-escape */
+      const pattern = '^.*\/(.+)$'
+      const re = new RegExp(pattern)
+      list.forEach((e, i) => {
+        log(pattern)
+        list[i] = e.replace(re, '$1')
+      })
+      o.list = list
+    } catch (e) {
+      error(e)
+      throw new Error(`Couldn't xz list the archive contents ${xzFile}`)
     }
     return o
   }
@@ -956,10 +1120,12 @@ export class Unpacker extends EventEmitter {
 
   /**
    * Clean up after the unpacking, delete any weird artifacts like __MACOSX resource things.
-   * @summary Clean up after the unpacking, delete any weird artifacts like __MACOSX resource things.
+   * @summary Clean up after the unpacking, delete any weird artifacts like __MACOSX
+   *          resource things.
    * @author Matthew Duffy <mattduffy@gmail.com>
    * @async
-   * @param { string } artifact - String name of something to look for after unpacking, to be deleted.
+   * @param { string } artifact - String name of something to look for after unpacking, to
+   *                              be deleted.
    * @return { undefined }
    */
   async cleanup(artifact) {
