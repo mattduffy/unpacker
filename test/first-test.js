@@ -12,12 +12,15 @@ const cmd = promisify(exec)
 const debug = Debug('unpacker:test')
 const __dirname = path.resolve(path.dirname('.'))
 const tinyZip = `${__dirname}/test/tiny.zip`
+const xz = `${__dirname}/test/singleton.jgp.xz`
 const gz = `${__dirname}/test/singleton.jpg.gz`
 const rar = `${__dirname}/test/marquetryRAR.rar`
 const tar = `${__dirname}/test/marquetry.tar`
 const tarGz = `${__dirname}/test/marquetry.tar.gz`
 const tarGzDirs = `${__dirname}/test/poofer-box-dirs.tar.gz`
 const tarball = `${__dirname}/test/marquetry.tgz`
+const tarxz = `${__dirname}/test/marquetry.txz`
+
 const badPath = `${__dirname}/test/missingfile.tar.gz`
 const destination = `${__dirname}/test/static/albums`
 const renamedDest = '_0000000001'
@@ -127,6 +130,13 @@ describe('checking for tar and gzip', { timeout: 5000 }, () => {
     const hasUnzip = await unpacker.checkCommands()
     assert.strictEqual(/unzip/.test(hasUnzip.unzip.path), true)
   })
+
+  it('should find a usable verion of xz', skip, async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(xz)
+    const hasXz = await unpacker.checkCommands()
+    assert.strictEqual(/xz/.test(hasXz.xz.path), true)
+  })
 })
 
 describe('get the file extension of the archive file', { timeout: 5000 }, async () => {
@@ -163,6 +173,20 @@ describe('get the file extension of the archive file', { timeout: 5000 }, async 
     await unpacker.setPath(gz)
     assert.ok(unpacker._fileExt === '.gz')
     assert.ok(unpacker.getExtension() === '.gz')
+  })
+
+  it('should correctly extract the file extension from a .zip file', skip, async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(tinyZip)
+    assert.ok(unpacker._fileExt === '.zip')
+    assert.ok(unpacker.getExtension() === '.zip')
+  })
+
+  it('should correctly extract the file extension from a .xz file', skip, async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(xz)
+    assert.ok(unpacker._fileExt === '.xz')
+    assert.ok(unpacker.getExtension() === '.xz')
   })
 
   it('should correctly extract the file extension from a .zip file', skip, async () => {
@@ -234,7 +258,7 @@ describe('successfully unpack some archives', { timeout: 5000 }, () => {
     debug('end of after method.')
   })
 
-  it(`should unpack and \nmove ${tarGz} \n  to ${destination}`, async () => {
+  it(`should unpack and \nmove ${tarGz} \nto ${destination}`, async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tarGz)
     const result = await unpacker.unpack(destination)
@@ -244,7 +268,7 @@ describe('successfully unpack some archives', { timeout: 5000 }, () => {
     assert.match(result.destination, re)
   })
 
-  it(`should unpack and \nmove ${rar} \n  to ${destination}`, async () => {
+  it(`should unpack and \nmove ${rar} \nto ${destination}`, async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(rar)
     const result = await unpacker.unpack(destination)
@@ -254,7 +278,7 @@ describe('successfully unpack some archives', { timeout: 5000 }, () => {
     assert.match(result.destination, re)
   })
 
-  it(`should unpack a single gunzipped file and \nmove ${gz} \n  to ${destination}`, async () => {
+  it(`should unpack a single gunzipped file and \nmove ${gz} \nto ${destination}`, async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(gz)
     const result = await unpacker.unpack(destination)
@@ -262,7 +286,7 @@ describe('successfully unpack some archives', { timeout: 5000 }, () => {
     assert.match(result.destination, re)
   })
 
-  it(`should unpack a .zip file and \nmove ${tinyZip} \n  to ${destination}`, async () => {
+  it(`should unpack a .zip file and \nmove ${tinyZip} \nto ${destination}`, async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tinyZip)
     const re = new RegExp(`${destination}`)
@@ -274,11 +298,15 @@ describe('successfully unpack some archives', { timeout: 5000 }, () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tarball)
     const re = new RegExp(`${renamedDest}`)
-    const result = await unpacker.unpack(destination, null, { rename: true, newName: renamedDest })
+    const result = await unpacker.unpack(
+      destination,
+      null,
+      { rename: true, newName: renamedDest },
+    )
     assert.match(result.finalPath, re)
   })
 
-  it('should flatten the directory structure of archive into a single extracted directory.', async () => {
+  it('should flatten directory structure of archive into single extracted dir.', async () => {
     const unpacker = new Unpacker({ flatten: true })
     await unpacker.setPath(tarGzDirs)
     const result = await unpacker.unpack(destination)
