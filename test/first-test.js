@@ -12,19 +12,20 @@ const cmd = promisify(exec)
 const debug = Debug('unpacker:test')
 const __dirname = path.resolve(path.dirname('.'))
 const tinyZip = `${__dirname}/test/tiny.zip`
-const xz = `${__dirname}/test/singleton.jgp.xz`
 const gz = `${__dirname}/test/singleton.jpg.gz`
 const rar = `${__dirname}/test/marquetryRAR.rar`
 const tar = `${__dirname}/test/marquetry.tar`
+const tarball = `${__dirname}/test/marquetry.tgz`
 const tarGz = `${__dirname}/test/marquetry.tar.gz`
 const tarGzDirs = `${__dirname}/test/poofer-box-dirs.tar.gz`
-const tarball = `${__dirname}/test/marquetry.tgz`
-const tarxz = `${__dirname}/test/marquetry.txz`
+const xz = `${__dirname}/test/xz_singleton.jpg.xz`
+const txz = `${__dirname}/test/xz_marquetry.txz`
+const tarxz = `${__dirname}/test/xz_marquetry.tar.xz`
 
 const badPath = `${__dirname}/test/missingfile.tar.gz`
 const destination = `${__dirname}/test/static/albums`
 const renamedDest = '_0000000001'
-const skip = { skip: false }
+// const skip = { skip: false }
 
 before('before tests, setup', () => {
   debug('before tests, setup')
@@ -35,7 +36,7 @@ after('after tests, teardown', () => {
 })
 
 describe('Testing the creation and use of the Unpacker class.', { timeout: 5000 }, () => {
-  it('should create an instance of Unpacker', skip, async () => {
+  it('should create an instance of Unpacker', async () => {
     debug('Unpacker constructor test')
     const unpacker = new Unpacker()
     assert.strictEqual(unpacker instanceof Unpacker, true, 'unpacker type error')
@@ -44,7 +45,7 @@ describe('Testing the creation and use of the Unpacker class.', { timeout: 5000 
 })
 
 describe('setting the path', { timeout: 5000 }, () => {
-  it('should be able to set a valid file system path to an archive file', skip, async () => {
+  it('should be able to set a valid file system path to an archive file', async () => {
     debug('getter/setter: path property')
     const unpacker = new Unpacker()
     await unpacker.setPath(tinyZip)
@@ -53,7 +54,7 @@ describe('setting the path', { timeout: 5000 }, () => {
     assert.strictEqual(value, tinyZip, 'unexpected value for path')
   })
 
-  it('should fail if path is empty \'\'', skip, async () => {
+  it('should fail if path is empty \'\'', async () => {
     const unpacker = new Unpacker()
     debug('value: \'\'')
     try {
@@ -64,7 +65,7 @@ describe('setting the path', { timeout: 5000 }, () => {
     }
   })
 
-  it('should fail if path to the file is invalid', skip, async () => {
+  it('should fail if path to the file is invalid', async () => {
     const unpacker = new Unpacker()
     try {
       await unpacker.setPath(badPath)
@@ -74,64 +75,78 @@ describe('setting the path', { timeout: 5000 }, () => {
     }
   })
 
-  it('should correctly identify the mime-type of a TAR archive', skip, async () => {
+  it('should correctly identify the mime-type of TAR archive', async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tar)
     debug(`${tar}: ${unpacker.getMimetype()}`)
     assert.strictEqual(unpacker.getMimetype(), 'application/x-tar')
   })
 
-  it('should correctly identify the mime-type of a RAR archive', skip, async () => {
+  it('should correctly identify the mime-type of XZ archive', async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(tarxz)
+    debug(`${tarxz}: ${unpacker.getMimetype()}`)
+    assert.strictEqual(unpacker.getMimetype(), 'application/x-xz')
+    await unpacker.setPath(xz)
+    debug(`${xz}: ${unpacker.getMimetype()}`)
+    assert.strictEqual(unpacker.getMimetype(), 'application/x-xz')
+  })
+
+  it('should correctly identify the mime-type of RAR archive', async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(rar)
     debug(`${rar}: ${unpacker.getMimetype()}`)
     assert.strictEqual(unpacker.getMimetype(), 'application/x-rar')
   })
 
-  it('should correctly identify the mime-type of a GZIP compressed archive', skip, async () => {
+  it('should correctly identify the mime-type of GZIP compressed archive', async () => {
     const unpacker = new Unpacker()
     // await unpacker.setPath(tarball)
     await unpacker.setPath(gz)
     assert.strictEqual(unpacker.getMimetype(), 'application/gzip')
   })
 
-  it('should correctly identify the mime-type of a ZIP compressed archive', skip, async () => {
+  it('should correctly identify the mime-type of ZIP compressed archive', async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tinyZip)
     assert.strictEqual(unpacker.getMimetype(), 'application/zip')
   })
 })
 
-describe('checking for tar and gzip', { timeout: 5000 }, () => {
-  it('should find a usable version of tar', skip, async () => {
+describe('checking for tar and gzip, rar and xz.', { timeout: 5000 }, () => {
+  it('should find a usable version of tar', async () => {
     const unpacker = new Unpacker()
-    await unpacker.setPath(tarball)
-    const hasTar = await unpacker.checkCommands()
-    assert.strictEqual(/tar/.test(hasTar.tar.path), true)
+    // await unpacker.setPath(tarball)
+    const commands = await unpacker.checkCommands()
+    assert.strictEqual(/tar/.test(commands.tar.path), true)
+    assert.strictEqual(/xz/.test(commands.xz.path), true)
+    assert.strictEqual(/unrar/.test(commands.unrar.path), true)
+    assert.strictEqual(/gzip/.test(commands.gzip.path), true)
+    assert.strictEqual(/unzip/.test(commands.unzip.path), true)
   })
 
-  it('should find a usable version of unrar', skip, async () => {
+  it.skip('should find a usable version of unrar', async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(rar)
     const hasRar = await unpacker.checkCommands()
     assert.strictEqual(/unrar/.test(hasRar.unrar.path), true)
   })
 
-  it('should find a usable verion of gzip', skip, async () => {
+  it.skip('should find a usable verion of gzip', async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tarball)
     const hasGzip = await unpacker.checkCommands()
     assert.strictEqual(/gzip/.test(hasGzip.gzip.path), true)
   })
 
-  it('should find a usable verion of unzip', skip, async () => {
+  it.skip('should find a usable verion of unzip', async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tinyZip)
     const hasUnzip = await unpacker.checkCommands()
     assert.strictEqual(/unzip/.test(hasUnzip.unzip.path), true)
   })
 
-  it('should find a usable verion of xz', skip, async () => {
+  it.skip('should find a usable verion of xz', async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(xz)
     const hasXz = await unpacker.checkCommands()
@@ -140,56 +155,70 @@ describe('checking for tar and gzip', { timeout: 5000 }, () => {
 })
 
 describe('get the file extension of the archive file', { timeout: 5000 }, async () => {
-  it('should correctly extract the file extension from a .tar file', skip, async () => {
+  it('should correctly extract the file extension from a .tar file', async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tar)
     assert.ok(unpacker._fileExt === '.tar')
     assert.ok(unpacker.getExtension() === '.tar')
   })
 
-  it('should correctly extract the file extension from a .rar file', skip, async () => {
+  it('should correctly extract the file extension from a .rar file', async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(rar)
     assert.ok(unpacker._fileExt === '.rar')
     assert.ok(unpacker.getExtension() === '.rar')
   })
 
-  it('should correctly extract the file extension from a .tar.gz file', skip, async () => {
+  it('should correctly extract the file extension from a .tar.gz file', async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tarGz)
     assert.ok(unpacker._fileExt === '.tar.gz')
     assert.ok(unpacker.getExtension() === '.tar.gz')
   })
 
-  it('should correctly extract the file extension from a .tgz file', skip, async () => {
+  it('should correctly extract the file extension from a .tgz file', async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tarball)
     assert.ok(unpacker._fileExt === '.tgz')
     assert.ok(unpacker.getExtension() === '.tgz')
   })
 
-  it('should correctly extract the file extension from a .gz file', skip, async () => {
+  it('should correctly extract the file extension from a .gz file', async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(gz)
     assert.ok(unpacker._fileExt === '.gz')
     assert.ok(unpacker.getExtension() === '.gz')
   })
 
-  it('should correctly extract the file extension from a .zip file', skip, async () => {
+  it('should correctly extract the file extension from a .zip file', async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tinyZip)
     assert.ok(unpacker._fileExt === '.zip')
     assert.ok(unpacker.getExtension() === '.zip')
   })
 
-  it('should correctly extract the file extension from a .xz file', skip, async () => {
+  it('should correctly extract the file extension from a .xz file', async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(xz)
     assert.ok(unpacker._fileExt === '.xz')
     assert.ok(unpacker.getExtension() === '.xz')
   })
 
-  it('should correctly extract the file extension from a .zip file', skip, async () => {
+  it('should correctly extract the file extension from a .tar.xz file', async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(tarxz)
+    assert.ok(unpacker._fileExt === '.tar.xz')
+    assert.ok(unpacker.getExtension() === '.tar.xz')
+  })
+
+  it('should correctly extract the file extension from a .txz file', async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(txz)
+    assert.ok(unpacker._fileExt === '.txz')
+    assert.ok(unpacker.getExtension() === '.txz')
+  })
+
+  it('should correctly extract the file extension from a .zip file', async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tinyZip)
     assert.ok(unpacker._fileExt === '.zip')
@@ -198,14 +227,14 @@ describe('get the file extension of the archive file', { timeout: 5000 }, async 
 })
 
 describe('successfully list the contents of the archive file', { timeout: 5000 }, async () => {
-  it(`should correctly list the contents of ${tar} file`, skip, async () => {
+  it(`should correctly list the contents of ${tar} file`, async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tar)
     const { list } = await unpacker.list()
     assert.ok(list.length >= 1)
   })
 
-  it(`should correctly list the contents of ${tarGz} file`, skip, async () => {
+  it(`should correctly list the contents of ${tarGz} file`, async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tarGz)
     const { list } = await unpacker.list()
@@ -213,7 +242,23 @@ describe('successfully list the contents of the archive file', { timeout: 5000 }
     assert.ok(list.length >= 1)
   })
 
-  it(`should correctly list the contents of ${rar} file`, skip, async () => {
+  it(`should correctly list the contents of ${tarxz} file`, async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(tarxz)
+    const { list } = await unpacker.list()
+    // debug(list)
+    assert.ok(list.length >= 1)
+  })
+
+  it(`should correctly list the contents of ${xz} file`, async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(xz)
+    const { list } = await unpacker.list()
+    // debug(list)
+    assert.ok(list.length === 1)
+  })
+
+  it(`should correctly list the contents of ${rar} file`, async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(rar)
     const { list } = await unpacker.list()
@@ -221,14 +266,14 @@ describe('successfully list the contents of the archive file', { timeout: 5000 }
     assert.ok(list.length >= 1)
   })
 
-  it(`should correctly list the contents of ${tinyZip} file`, skip, async () => {
+  it(`should correctly list the contents of ${tinyZip} file`, async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(tinyZip)
     const { list } = await unpacker.list()
     assert.ok(list.length >= 1)
   })
 
-  it(`should correctly list the contents of ${gz} file`, skip, async () => {
+  it(`should correctly list the contents of ${gz} file`, async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(gz)
     const { list } = await unpacker.list()
@@ -268,12 +313,30 @@ describe('successfully unpack some archives', { timeout: 5000 }, () => {
     assert.match(result.destination, re)
   })
 
+  it(`should unpack and \nmove ${tarxz} \nto ${destination}`, async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(tarxz)
+    const result = await unpacker.unpack(destination)
+    debug(`destination: ${destination}`)
+    debug(`result.destination: ${result.destination}`)
+    const re = new RegExp(`${destination}`)
+    assert.match(result.destination, re)
+  })
+
   it(`should unpack and \nmove ${rar} \nto ${destination}`, async () => {
     const unpacker = new Unpacker()
     await unpacker.setPath(rar)
     const result = await unpacker.unpack(destination)
     debug(`destination: ${destination}`)
     debug(`result.destination: ${result.destination}`)
+    const re = new RegExp(`${destination}`)
+    assert.match(result.destination, re)
+  })
+
+  it(`should unpack a single xz'd file and \nmove ${xz} \nto ${destination}`, async () => {
+    const unpacker = new Unpacker()
+    await unpacker.setPath(xz)
+    const result = await unpacker.unpack(destination)
     const re = new RegExp(`${destination}`)
     assert.match(result.destination, re)
   })
