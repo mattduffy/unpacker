@@ -52,6 +52,7 @@ export class Unpacker extends EventEmitter {
     this._isGzipFile = false
     this._isZipFile = false
     this._isXzFile = false
+    this._isTxzFile = false
     this._isCompressed = false
     this._tar = null
     this._xz = null
@@ -280,7 +281,7 @@ export class Unpacker extends EventEmitter {
       this._isXzFile = true
     } else if (this._mimetype === XZ && ext.groups.txz) {
       this._isCompressed = true
-      this._isXzFile = true
+      this._isTxzFile = true
     } else {
       log('what is this._mimetype', this._mimetype, XZ)
       log('ext.groups', ext.groups)
@@ -614,13 +615,22 @@ export class Unpacker extends EventEmitter {
     // } else if (this._isTarFile && this._isGzipFile) {
     } else if (this._isTarFile && this._isCompressed) {
       log(await this.list())
-      // Compressed TAR .tar.gz or .tgz
+      // Compressed TAR .tar.gz .tgz or .tar.xz .txz
       if (this._flatten) {
         unpack = `${this._tar.path} ${tarChangeToDir} ${tarExcludes} ${tarDirOptions} `
           + `-xzf ${this._path}`
       } else {
         unpack = `${this._tar.path} ${tarChangeToDir} ${tarExcludes} -xzf ${this._path}`
       }
+    } else if (this._isTxzFile && this._isCompressed) {
+      if (this._flatten) {
+        unpack = `${this._tar.path} -J ${tarChangeToDir} ${tarExcludes} ${tarDirOptions} `
+          + `-xf ${this._path}`
+      } else {
+        unpack = `${this._tar.path} -J ${tarChangeToDir} ${tarExcludes} -xf ${this._path}`
+      }
+    } else if (this._isXzFile) {
+      unpack = `${this._xz.path} --decompress --keep ${this._path}`
     } else if (this._isGzipFile && this._isCompressed) {
       // GZIP file is probably a .gz
       unpack = `${this._gzip.path} --decompress --force --keep --suffix ${this._file.ext} `
@@ -645,6 +655,8 @@ export class Unpacker extends EventEmitter {
       }
     } else {
       error(`this._isTarFile: ${this._isTarFile} (compressed? ${this._isCompressed}`)
+      error(`this._isTxzFile: ${this._isTxzFile} (compressed? ${this._isCompressed}`)
+      error(`this._isXzFile: ${this._isXzFile}`)
       error(`this._isRarFile: ${this._isRarFile}`)
       error(`this._isGzipFile: ${this._isGzipFile}`)
       error(`this._isGzipFile: ${this._isZipFile}`)
@@ -670,7 +682,9 @@ export class Unpacker extends EventEmitter {
     }
     try {
       // if (this._isTarFile || this._isRarFile || this._isZipFile) {
-      if (this._isTarFile || this._isRarFile) {
+      if (this._isTarFile || this._isTxzFile || this._isRarFile) {
+        this._tempDir = `${this._changeToDir}${this._fileBasename}`
+      } else if (this.isXzFile) {
         this._tempDir = `${this._changeToDir}${this._fileBasename}`
       } else if (this._isZipFile) {
         // ZIP file
@@ -909,10 +923,10 @@ export class Unpacker extends EventEmitter {
       if (this._isTarFile) {
         list = this.tar_t(file)
       }
-      if (this._isXzFile && this._isCompressed) {
+      if (this._isTxzFile) {
         list = this.tar_t(file, 'xz')
       }
-      if (this._isXzFile && !this.isCompressed) {
+      if (this._isXzFile) {
         list = this.xz_list(file)
       }
       if (this._isRarFile) {
@@ -1058,20 +1072,13 @@ export class Unpacker extends EventEmitter {
     log(xzFile)
     const o = {}
     try {
-      const xz = 'xz --list --quiet'
-      log(`cmd: ${xz} ${xzFile}`)
-      o.cmd = `${xz} ${xzFile}`
-      const result = await cmd(`${xz} ${xzFile}`)
+      const xz = 'xz --list '
+      const awk = '| awk \'NR==2 { print $5,$6, $9 }\''
+      o.cmd = `${xz} ${xzFile} ${awk}`
+      log(`cmd: ${o.cmd}`)
+      const result = await cmd(o.cmd)
       log(result)
-      const list = result.stdout.trim().split('\n')
-      /* eslint-disable-next-line no-useless-escape */
-      const pattern = '^.*\/(.+)$'
-      const re = new RegExp(pattern)
-      list.forEach((e, i) => {
-        log(pattern)
-        list[i] = e.replace(re, '$1')
-      })
-      o.list = list
+      o.list = [result.stdout.trim()]
     } catch (e) {
       error(e)
       throw new Error(`Couldn't xz list the archive contents ${xzFile}`)

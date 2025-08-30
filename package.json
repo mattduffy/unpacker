@@ -24,8 +24,7 @@
     "test": "DEBUG=unpacker:* node --test test/"
   },
   "files": [
-    "src/",
-    "test"
+    "src/"
   ],
   "devDependencies": {
     "eslint": "8.26.0",
