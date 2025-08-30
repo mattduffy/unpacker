@@ -1,9 +1,9 @@
 # Unpack Files From a Compressed Archive
 
-This package for Node.js provides an object-oriented interface for working with archive files.  Archive in this case refers to either **gzip** or **zip** compressed files and **rar** or **tar** files.  This package is compatible with POSIX systems; it will not work on a Windows machine as-is. This package will not run in a browser.
+This package for Node.js provides an object-oriented interface for working with archive files.  Archive in this case refers to either **xz**, **gzip** or **zip** compressed files and **rar** or **tar** files.  This package is compatible with POSIX systems; it will not work on a Windows machine as-is. This package will not run in a browser.
 
 ## Using Unpacker
-The goal of this package is to simplify the process of unpacking several different formats of file archives, most likely uploaded to a website, for further processing or integration.  This package abstracts away the need to know the mime type of the archive, and the commands necessary to unpack and move the archive contents to the desired target destination.  The Unpacker class instantiates with a simple interface and is able to determine the location and version of `tar`, `unrar`, `gzip` and `zip` binaries.
+The goal of this package is to simplify the process of unpacking several different formats of file archives, most likely uploaded to a website, for further processing or integration.  This package abstracts away the need to know the mime type of the archive, and the commands necessary to unpack and move the archive contents to the desired target destination.  The Unpacker class instantiates with a simple interface and is able to determine the location and version of `tar`, `unrar`, `gzip`, `zip` and `xz` binaries.
 
 ```bash
 npm install --save @mattduffy/unpacker
