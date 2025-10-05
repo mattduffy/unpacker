@@ -498,7 +498,8 @@ export class Unpacker extends EventEmitter {
     }
     try {
       /* eslint-disable-next-line no-useless-escape */
-      const cmdString = `${unzip.path} -v | awk '/^[Uu]n[Zz]ip ([0-9]+\.[0-9]+)/ { print $2 }'`
+      const cmdString = `${unzip.path} -v `
+        + '| awk \'/^[Uu]n[Zz]ip ([0-9]+.[0-9]+)/ { print $2 }\''
       const version = await cmd(cmdString)
       unzip.version = version.stdout.trim()
     } catch (e) {
