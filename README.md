@@ -56,9 +56,9 @@ const unpacker = new Unpacker()
 const binaries = await unpacker.checkCommands()
 console.log(binaries)
 // {
+//   gzip: { path: '/usr/bin/gzip', version: '1.10' },
 //   tar: { path: '/usr/bin/tar', version: '1.30' },
 //   unrar: { path: '/usr/bin/unrar', version: '5.61' }, 
-//   gzip: { path: '/usr/bin/gzip', version: '1.10' },
 //   unzip: { path: '/usr/bin/unzip', version: '6.00' },
 //   xz: { path: '/usr/bin/xz', version: '5.2.4' }
 // }
