@@ -9,7 +9,7 @@
   "homepage": "https://github.com/mattduffy/unpacker#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mattduffy/unpacker"
+    "url": "git+https://github.com/mattduffy/unpacker.git"
   },
   "bugs": {
     "url": "https://github.com/mattduffy/unpacker/issues"
