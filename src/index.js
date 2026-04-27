@@ -534,9 +534,9 @@ export class Unpacker extends EventEmitter {
       await this.whichXz()
     }
     return {
+      gzip: this._gzip,
       tar: this._tar,
       unrar: this._unrar,
-      gzip: this._gzip,
       unzip: this._unzip,
       xz: this._xz,
     }
