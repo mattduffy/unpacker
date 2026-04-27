@@ -1,8 +1,34 @@
+const restrictedGlobals = require('eslint-restricted-globals')
+
 module.exports = {
+  settings: {
+    'import/resolver': {
+      exports: {},
+      node: {
+        extensions: ['.js', '.mjs', '.tx', 'tsx'],
+      },
+    },
+  },
+  globals: {
+    window: true,
+    document: true,
+    origin: true,
+    worker: true,
+  },
   env: {
     es2021: true,
     node: true,
+    browser: true,
+    worker: true,
   },
+  overrides: [
+    {
+      files: ['public/j/worker.js'],
+      rules: {
+        'no-restricted-globals': ['error', 'isFinite', 'isNaN'].concat(restrictedGlobals),
+      },
+    },
+  ],
   extends: [
     'airbnb-base',
   ],
@@ -12,11 +38,13 @@ module.exports = {
   },
   rules: {
     semi: ['error', 'never'],
-    'import/extensions': 'off',
     'no-console': 'off',
     'no-underscore-dangle': 'off',
+    'import/extensions': 'off',
+    'import/no-unresolved': 'off',
     'import/prefer-default-export': 'off',
-    'max-len': 'off',
+    'max-len': ['error', { code: 100 }],
+    'new-cap': 'off',
     'object-curly-newline': 'off',
   },
 }
